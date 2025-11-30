@@ -1,0 +1,1841 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Feature states storage
+local featureStates = {
+    UnlimitedCola = false,
+    ColaMetatableHook = nil,
+    ColaEventConnection = nil,
+    AutoMoneyFarm = false,
+    AutoTurkeyFarm = false,
+    FastReviveMethod = "Interact",
+    FastRevive = false,
+    interactHookActive = false
+}
+
+-- ESP Systems
+local espPlayerEnabled = false
+local espPlayers = {}
+local espDownedEnabled = false
+local espDowned = {}
+
+-- Headless & Korblox Systems
+local HEADLESS_MESH_ID = "rbxassetid://1095708"
+local KORBLOX_MESH_ID = "rbxassetid://101851696"
+local KORBLOX_COLOR = Color3.fromRGB(50, 50, 50)
+
+local WindUI
+do
+    local ok, res = pcall(function() return require("./src/Init") end)
+    if ok and res then WindUI = res
+    else
+        WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+    end
+end
+
+local Window = WindUI:CreateWindow({
+    Title = "Rewashi",
+    Author = "SYFTA",
+    Folder = "IDontKnowww",
+    Size = UDim2.fromOffset(620, 460),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 180,
+    ScrollBarEnabled = true,
+    User = {
+        Enabled = true,
+        Anonymous = true
+    }
+})
+
+Window:EditOpenButton({
+    Title = "Rewashi Hub X",
+    Icon = "gamepad",
+    CornerRadius = UDim.new(0, 6),
+    StrokeThickness = 2,
+    Color = ColorSequence.new(Color3.fromRGB(30, 30, 30), Color3.fromRGB(255, 255, 255)),
+    Draggable = true
+})
+
+--[[ HEADLESS & KORBLOX FUNCTIONS ]]
+local function applyHeadless(head)
+    if not head then return end
+
+    head.Transparency = 1
+    head.CanCollide = false
+
+    local function removeFace()
+        local face = head:FindFirstChild("face")
+        if face then
+            face:Destroy()
+        end
+    end
+
+    removeFace()
+
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshType = Enum.MeshType.FileMesh
+    mesh.MeshId = HEADLESS_MESH_ID
+    mesh.Scale = Vector3.new(0.001, 0.001, 0.001)
+    mesh.Parent = head
+
+    head:GetPropertyChangedSignal("Transparency"):Connect(function()
+        if head.Transparency ~= 1 then
+            head.Transparency = 1
+        end
+    end)
+
+    head.ChildAdded:Connect(function(child)
+        if child.Name == "face" and child:IsA("Decal") then
+            child:Destroy()
+        end
+    end)
+end
+
+local function applyKorbloxLeg(character)
+    local rightLeg = character:FindFirstChild("Right Leg") or character:FindFirstChild("RightUpperLeg")
+    if not rightLeg then
+        warn("Right Leg/Upper Leg not found!")
+        return
+    end
+
+    for _, child in ipairs(rightLeg:GetChildren()) do
+        if child:IsA("SpecialMesh") or child:IsA("CharacterMesh") then
+            child:Destroy()
+        end
+    end
+
+    rightLeg.Color = KORBLOX_COLOR
+    rightLeg:GetPropertyChangedSignal("Color"):Connect(function()
+        if rightLeg.Color ~= KORBLOX_COLOR then
+            rightLeg.Color = KORBLOX_COLOR
+        end
+    end)
+
+    local korbloxMesh = Instance.new("SpecialMesh")
+    korbloxMesh.MeshType = Enum.MeshType.FileMesh
+    korbloxMesh.MeshId = KORBLOX_MESH_ID
+    korbloxMesh.Scale = Vector3.new(1, 1, 1)
+    korbloxMesh.Parent = rightLeg
+end
+
+local function applyCharacterEffects(character)
+    local head = character:FindFirstChild("Head")
+    if head then
+        applyHeadless(head)
+    end
+    applyKorbloxLeg(character)
+end
+
+local function applyToAllPlayersEffects()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            applyCharacterEffects(player.Character)
+        end
+        player.CharacterAdded:Connect(function(character)
+            applyCharacterEffects(character)
+        end)
+    end
+end
+
+--[[ ESP PLAYER FUNCTIONS ]]
+local function createPlayerESP(player)
+    if not player or player == LocalPlayer then return end
+    if not player.Character then return end
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    -- Remove existing ESP
+    if espPlayers[player] then
+        if espPlayers[player].connection then
+            espPlayers[player].connection:Disconnect()
+        end
+        local highlight = character:FindFirstChild("PlayerESP")
+        local billboard = humanoidRootPart:FindFirstChild("PlayerESPText")
+        local distanceBillboard = humanoidRootPart:FindFirstChild("PlayerDistanceESP")
+        if highlight then highlight:Destroy() end
+        if billboard then billboard:Destroy() end
+        if distanceBillboard then distanceBillboard:Destroy() end
+    end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "PlayerESP"
+    highlight.Adornee = character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+    highlight.FillTransparency = 0.7
+    highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
+    highlight.OutlineTransparency = 0
+    highlight.Parent = character
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PlayerESPText"
+    billboard.Adornee = humanoidRootPart
+    billboard.Size = UDim2.new(0, 200, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = humanoidRootPart
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = player.Name
+    textLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    textLabel.TextSize = 14
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Parent = billboard
+    
+    local distanceBillboard = Instance.new("BillboardGui")
+    distanceBillboard.Name = "PlayerDistanceESP"
+    distanceBillboard.Adornee = humanoidRootPart
+    distanceBillboard.Size = UDim2.new(0, 200, 0, 30)
+    distanceBillboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    distanceBillboard.AlwaysOnTop = true
+    distanceBillboard.Parent = humanoidRootPart
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Size = UDim2.new(1, 0, 1, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = "0 studs"
+    distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    distanceLabel.TextSize = 12
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.Parent = distanceBillboard
+    
+    espPlayers[player] = {
+        highlight = highlight,
+        billboard = billboard,
+        distanceBillboard = distanceBillboard,
+        connection = player.CharacterAdded:Connect(function(char)
+            task.wait(1)
+            if espPlayerEnabled then
+                createPlayerESP(player)
+            end
+        end)
+    }
+end
+
+local function removePlayerESP(player)
+    if espPlayers[player] then
+        if espPlayers[player].connection then
+            espPlayers[player].connection:Disconnect()
+        end
+        if player.Character then
+            local highlight = player.Character:FindFirstChild("PlayerESP")
+            local billboard = player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart:FindFirstChild("PlayerESPText")
+            local distanceBillboard = player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart:FindFirstChild("PlayerDistanceESP")
+            if highlight then highlight:Destroy() end
+            if billboard then billboard:Destroy() end
+            if distanceBillboard then distanceBillboard:Destroy() end
+        end
+        espPlayers[player] = nil
+    end
+end
+
+local function updatePlayerDistances()
+    if not espPlayerEnabled then return end
+    
+    local localChar = LocalPlayer.Character
+    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return end
+    
+    for player, espData in pairs(espPlayers) do
+        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local playerRoot = player.Character.HumanoidRootPart
+            local distance = (localRoot.Position - playerRoot.Position).Magnitude
+            local distanceText = math.floor(distance) .. " studs"
+            
+            if espData.distanceBillboard and espData.distanceBillboard:FindFirstChildWhichIsA("TextLabel") then
+                espData.distanceBillboard:FindFirstChildWhichIsA("TextLabel").Text = distanceText
+            end
+        end
+    end
+end
+
+local function togglePlayerESP()
+    espPlayerEnabled = not espPlayerEnabled
+    
+    if espPlayerEnabled then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createPlayerESP(player)
+            end
+        end
+        
+        Players.PlayerAdded:Connect(function(player)
+            if espPlayerEnabled then
+                player.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    createPlayerESP(player)
+                end)
+            end
+        end)
+        
+        RunService.Heartbeat:Connect(updatePlayerDistances)
+    else
+        for player, _ in pairs(espPlayers) do
+            removePlayerESP(player)
+        end
+        espPlayers = {}
+    end
+end
+
+--[[ ESP DOWNED FUNCTIONS ]]
+local function isPlayerDowned(player)
+    if not player or not player.Character then return false end
+    
+    local character = player.Character
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    
+    if humanoid and humanoid.Health <= 0 then
+        return true
+    end
+    
+    if character:GetAttribute("Downed") == true then
+        return true
+    end
+    
+    if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Physics then
+        return true
+    end
+    
+    return false
+end
+
+local function createDownedESP(player)
+    if not player or player == LocalPlayer then return end
+    if not player.Character then return end
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    if espDowned[player] then
+        if espDowned[player].connection then
+            espDowned[player].connection:Disconnect()
+        end
+        local highlight = character:FindFirstChild("DownedESP")
+        local billboard = humanoidRootPart:FindFirstChild("DownedESPText")
+        local distanceBillboard = humanoidRootPart:FindFirstChild("DownedDistanceESP")
+        if highlight then highlight:Destroy() end
+        if billboard then billboard:Destroy() end
+        if distanceBillboard then distanceBillboard:Destroy() end
+    end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "DownedESP"
+    highlight.Adornee = character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.FillTransparency = 0.4
+    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineTransparency = 0
+    highlight.Parent = character
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "DownedESPText"
+    billboard.Adornee = humanoidRootPart
+    billboard.Size = UDim2.new(0, 200, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = humanoidRootPart
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = player.Name .. " [DOWNED]"
+    textLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    textLabel.TextSize = 14
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Parent = billboard
+    
+    local distanceBillboard = Instance.new("BillboardGui")
+    distanceBillboard.Name = "DownedDistanceESP"
+    distanceBillboard.Adornee = humanoidRootPart
+    distanceBillboard.Size = UDim2.new(0, 200, 0, 30)
+    distanceBillboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    distanceBillboard.AlwaysOnTop = true
+    distanceBillboard.Parent = humanoidRootPart
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Size = UDim2.new(1, 0, 1, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = "0 studs"
+    distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    distanceLabel.TextSize = 12
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.Parent = distanceBillboard
+    
+    espDowned[player] = {
+        highlight = highlight,
+        billboard = billboard,
+        distanceBillboard = distanceBillboard,
+        connection = player.CharacterAdded:Connect(function(char)
+            task.wait(1)
+            if espDownedEnabled and isPlayerDowned(player) then
+                createDownedESP(player)
+            end
+        end)
+    }
+end
+
+local function removeDownedESP(player)
+    if espDowned[player] then
+        if espDowned[player].connection then
+            espDowned[player].connection:Disconnect()
+        end
+        if player.Character then
+            local highlight = player.Character:FindFirstChild("DownedESP")
+            local billboard = player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart:FindFirstChild("DownedESPText")
+            local distanceBillboard = player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart:FindFirstChild("DownedDistanceESP")
+            if highlight then highlight:Destroy() end
+            if billboard then billboard:Destroy() end
+            if distanceBillboard then distanceBillboard:Destroy() end
+        end
+        espDowned[player] = nil
+    end
+end
+
+local function updateDownedESP()
+    if not espDownedEnabled then return end
+    
+    local localChar = LocalPlayer.Character
+    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if isPlayerDowned(player) then
+                if not espDowned[player] then
+                    createDownedESP(player)
+                end
+                
+                if localRoot and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local playerRoot = player.Character.HumanoidRootPart
+                    local distance = (localRoot.Position - playerRoot.Position).Magnitude
+                    local distanceText = math.floor(distance) .. " studs"
+                    
+                    if espDowned[player].distanceBillboard and espDowned[player].distanceBillboard:FindFirstChildWhichIsA("TextLabel") then
+                        espDowned[player].distanceBillboard:FindFirstChildWhichIsA("TextLabel").Text = distanceText
+                    end
+                end
+            else
+                removeDownedESP(player)
+            end
+        end
+    end
+end
+
+local function toggleDownedESP()
+    espDownedEnabled = not espDownedEnabled
+    
+    if espDownedEnabled then
+        RunService.Heartbeat:Connect(updateDownedESP)
+    else
+        for player, _ in pairs(espDowned) do
+            removeDownedESP(player)
+        end
+        espDowned = {}
+    end
+end
+
+--[[ REST OF YOUR EXISTING CODE ]]
+local Events = ReplicatedStorage:FindFirstChild("Events")
+local CharacterFolder = Events and Events:FindFirstChild("Character")
+local EmoteRemote = CharacterFolder and CharacterFolder:FindFirstChild("Emote")
+local PassCharacterInfo = CharacterFolder and CharacterFolder:FindFirstChild("PassCharacterInfo")
+
+local CosmeticRemote = nil
+if Events then
+    CosmeticRemote = Events:FindFirstChild("Cosmetic") or Events:FindFirstChild("EquipCosmetic") or Events:FindFirstChild("Cosmetics")
+end
+
+if not (EmoteRemote and PassCharacterInfo) then
+    warn("Rewashi: Emote remotes not fully found. Emote changer may not work in this game.")
+end
+if not CosmeticRemote then
+    warn("Rewashi: Cosmetic remote not found automatically. Cosmetic changer may not work unless you set CosmeticRemote manually.")
+end
+
+local currentTag = nil
+local currentEmotes = {}
+local selectEmotes = {}
+local emoteEnabled = {}
+for i = 1, 12 do
+    currentEmotes[i] = ""
+    selectEmotes[i] = ""
+    emoteEnabled[i] = false
+end
+
+local function readTagFromFolder(f)
+    if not f then return nil end
+    local a = f:GetAttribute("Tag")
+    if a ~= nil then return a end
+    local o = f:FindFirstChild("Tag")
+    if o and o:IsA("ValueBase") then return o.Value end
+    return nil
+end
+
+local function onRespawn()
+    repeat task.wait() until Workspace:FindFirstChild("Game") and Workspace.Game:FindFirstChild("Players")
+    local pf = Workspace.Game.Players:FindFirstChild(LocalPlayer.Name) or Workspace.Game.Players:WaitForChild(LocalPlayer.Name,10)
+    if not pf then
+        currentTag = nil
+        return
+    end
+    currentTag = readTagFromFolder(pf)
+end
+
+onRespawn()
+LocalPlayer.CharacterAdded:Connect(onRespawn)
+
+local pendingSlot = nil
+local remoteSignal = PassCharacterInfo and PassCharacterInfo.OnClientEvent
+
+local function fireSelect(slot)
+    if not currentTag or not remoteSignal then return end
+    local b = tonumber(currentTag) or 0
+    local buf = buffer.create(2)
+    buffer.writeu8(buf,0,b)
+    buffer.writeu8(buf,1,17)
+    firesignal(remoteSignal, buf, { selectEmotes[slot] })
+    print(("Rewashi | emote: fired select %d -> %s (tag=%s)"):format(slot, tostring(selectEmotes[slot]), tostring(b)))
+end
+
+if remoteSignal then
+    remoteSignal:Connect(function()
+        if pendingSlot then
+            fireSelect(pendingSlot)
+            pendingSlot = nil
+        end
+    end)
+end
+
+local oldNamecall
+local successHook = pcall(function()
+    oldNamecall = hookmetamethod(game,"__namecall", function(self,...)
+        local m = getnamecallmethod()
+        local a = {...}
+        if m == "FireServer" and self == EmoteRemote and type(a[1]) == "string" then
+            for i = 1, 12 do
+                if emoteEnabled[i] and currentEmotes[i] ~= "" and a[1] == currentEmotes[i] then
+                    pendingSlot = i
+                    task.spawn(function()
+                        task.wait(0.45)
+                        if pendingSlot == i then
+                            fireSelect(i)
+                            pendingSlot = nil
+                        end
+                    end)
+                    return
+                end
+            end
+        end
+        return oldNamecall(self,...)
+    end)
+end)
+
+if not successHook then
+    warn("Rewashi: failed to hook metamethod. Emote auto-replacement might not function.")
+end
+
+local cosCurrent = {}
+local cosSelect = {}
+local cosEnabled = {}
+for i = 1, 1 do
+    cosCurrent[i] = ""
+    cosSelect[i] = ""
+    cosEnabled[i] = false
+end
+
+local function fireCosmetic(newName)
+    if not CosmeticRemote then
+        warn("Cosmetic remote not found")
+        return
+    end
+    local ok, err = pcall(function()
+        if CosmeticRemote.FireServer then
+            CosmeticRemote:FireServer(newName)
+        end
+    end)
+    if not ok then
+        warn("Failed firing cosmetic remote:", err)
+    else
+        print("Rewashi | cosmetic fired:", newName)
+    end
+end
+
+getgenv().SpeedSettings = getgenv().SpeedSettings or {
+    Speed = 1500,
+    JumpCap = 1,
+    AirStrafeAcceleration = 187,
+    GravityValue = 192.0,
+    FrontJumpSpeed = 70,
+    GravityEnabled = false
+}
+local currentSettings = getgenv().SpeedSettings
+
+local requiredFields = {
+    Friction=true, AirStrafeAcceleration=true, JumpHeight=true, RunDeaccel=true,
+    JumpSpeedMultiplier=true, JumpCap=true, SprintCap=true, WalkSpeedMultiplier=true,
+    BhopEnabled=true, Speed=true, AirAcceleration=true, RunAccel=true, SprintAcceleration=true
+}
+
+local function getMatchingTables()
+    local matched = {}
+    for _, obj in pairs(getgc(true)) do
+        if typeof(obj) == "table" then
+            local ok = true
+            for field in pairs(requiredFields) do
+                if rawget(obj, field) == nil then ok = false; break end
+            end
+            if ok then table.insert(matched, obj) end
+        end
+    end
+    return matched
+end
+
+local function applyToTables()
+    for _, t in ipairs(getMatchingTables()) do
+        pcall(function()
+            t.Speed = currentSettings.Speed
+            t.JumpCap = currentSettings.JumpCap
+            t.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
+        end)
+    end
+end
+
+local originalGravity = Workspace.Gravity
+local gravityToggled = false
+local function setGravity(val)
+    if type(val) ~= "number" then return end
+    Workspace.Gravity = val
+end
+local function enableGravityToggle(enable)
+    gravityToggled = enable
+    if enable then
+        setGravity(currentSettings.GravityValue or originalGravity)
+    else
+        setGravity(originalGravity)
+    end
+end
+
+local function applyFrontJumpSpeed()
+    for _, t in ipairs(getMatchingTables()) do
+        pcall(function()
+            if rawget(t, "FrontJumpSpeed") ~= nil then
+                t.FrontJumpSpeed = currentSettings.FrontJumpSpeed
+            end
+        end)
+    end
+end
+
+-- Ezzz Trimp System
+local ezTrimpEnabled = false
+local ezTrimpSpeed = 70
+local ezTrimpVelocity = nil
+local ezTrimpGUI = nil
+
+-- Front Jump System
+local frontJumpEnabled = false
+local frontJumpSpeed = 70
+local frontJumpVelocity = nil
+local frontJumpGUI = nil
+
+-- Back Jump System
+local backJumpEnabled = false
+local backJumpSpeed = 70
+local backJumpVelocity = nil
+local backJumpGUI = nil
+
+-- Ezzz Trimp Function (tanpa auto lompat)
+local function startEzTrimp()
+    if ezTrimpVelocity then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    ezTrimpVelocity = Instance.new("BodyVelocity")
+    ezTrimpVelocity.MaxForce = Vector3.new(400000, 0, 400000)
+    ezTrimpVelocity.P = 1250
+    ezTrimpVelocity.Parent = root
+
+    task.spawn(function()
+        while ezTrimpEnabled and ezTrimpVelocity and ezTrimpVelocity.Parent do
+            local cam = workspace.CurrentCamera
+            if cam and root then
+                local dir = cam.CFrame.LookVector
+                dir = Vector3.new(dir.X, 0, dir.Z)
+                if dir.Magnitude > 0 then dir = dir.Unit end
+                ezTrimpVelocity.Velocity = dir * ezTrimpSpeed
+            end
+            task.wait(0.03)
+        end
+        if ezTrimpVelocity then
+            ezTrimpVelocity:Destroy()
+            ezTrimpVelocity = nil
+        end
+    end)
+end
+
+-- Front Jump Function
+local function startFrontJump()
+    if frontJumpVelocity then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    frontJumpVelocity = Instance.new("BodyVelocity")
+    frontJumpVelocity.MaxForce = Vector3.new(400000, 0, 400000)
+    frontJumpVelocity.P = 1250
+    frontJumpVelocity.Parent = root
+
+    task.spawn(function()
+        while frontJumpEnabled and frontJumpVelocity and frontJumpVelocity.Parent do
+            local cam = workspace.CurrentCamera
+            if cam and root then
+                local dir = cam.CFrame.LookVector
+                dir = Vector3.new(dir.X, 0, dir.Z)
+                if dir.Magnitude > 0 then dir = dir.Unit end
+                frontJumpVelocity.Velocity = dir * frontJumpSpeed
+            end
+            task.wait(0.03)
+        end
+        if frontJumpVelocity then
+            frontJumpVelocity:Destroy()
+            frontJumpVelocity = nil
+        end
+    end)
+end
+
+-- Back Jump Function
+local function startBackJump()
+    if backJumpVelocity then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    backJumpVelocity = Instance.new("BodyVelocity")
+    backJumpVelocity.MaxForce = Vector3.new(400000, 0, 400000)
+    backJumpVelocity.P = 1250
+    backJumpVelocity.Parent = root
+
+    task.spawn(function()
+        while backJumpEnabled and backJumpVelocity and backJumpVelocity.Parent do
+            local cam = workspace.CurrentCamera
+            if cam and root then
+                local dir = -cam.CFrame.LookVector
+                dir = Vector3.new(dir.X, 0, dir.Z)
+                if dir.Magnitude > 0 then dir = dir.Unit end
+                backJumpVelocity.Velocity = dir * backJumpSpeed
+            end
+            task.wait(0.03)
+        end
+        if backJumpVelocity then
+            backJumpVelocity:Destroy()
+            backJumpVelocity = nil
+        end
+    end)
+end
+
+-- Ezzz Trimp GUI
+local function createEzTrimpGUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "EzTrimpGUI"
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 120, 0, 50)
+    mainFrame.Position = UDim2.new(0, 10, 0, 10)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    mainFrame.BackgroundTransparency = 0.2
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = mainFrame
+
+    local jumpButton = Instance.new("TextButton")
+    jumpButton.Size = UDim2.new(0, 110, 0, 40)
+    jumpButton.Position = UDim2.new(0, 5, 0, 5)
+    jumpButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    jumpButton.Text = "Ezzz Trimp: OFF"
+    jumpButton.TextColor3 = Color3.new(0, 0, 0)
+    jumpButton.Font = Enum.Font.GothamBold
+    jumpButton.TextSize = 12
+    jumpButton.AutoButtonColor = false
+    jumpButton.Parent = mainFrame
+
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 4)
+    buttonCorner.Parent = jumpButton
+
+    local function toggleEzTrimp()
+        ezTrimpEnabled = not ezTrimpEnabled
+        
+        if ezTrimpEnabled then
+            jumpButton.Text = "Ezzz Trimp: ON"
+            startEzTrimp()
+        else
+            jumpButton.Text = "Ezzz Trimp: OFF"
+            if ezTrimpVelocity then
+                ezTrimpVelocity:Destroy()
+                ezTrimpVelocity = nil
+            end
+        end
+    end
+
+    jumpButton.MouseButton1Click:Connect(toggleEzTrimp)
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.G then
+            toggleEzTrimp()
+        end
+    end)
+
+    return screenGui
+end
+
+-- Front Jump GUI
+local function createFrontJumpGUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "FrontJumpGUI"
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 120, 0, 50)
+    mainFrame.Position = UDim2.new(0, 10, 0, 70)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    mainFrame.BackgroundTransparency = 0.2
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = mainFrame
+
+    local jumpButton = Instance.new("TextButton")
+    jumpButton.Size = UDim2.new(0, 110, 0, 40)
+    jumpButton.Position = UDim2.new(0, 5, 0, 5)
+    jumpButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    jumpButton.Text = "Front Jump: OFF"
+    jumpButton.TextColor3 = Color3.new(0, 0, 0)
+    jumpButton.Font = Enum.Font.GothamBold
+    jumpButton.TextSize = 12
+    jumpButton.AutoButtonColor = false
+    jumpButton.Parent = mainFrame
+
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 4)
+    buttonCorner.Parent = jumpButton
+
+    local function toggleFrontJump()
+        frontJumpEnabled = not frontJumpEnabled
+        
+        if frontJumpEnabled then
+            jumpButton.Text = "Front Jump: ON"
+            startFrontJump()
+        else
+            jumpButton.Text = "Front Jump: OFF"
+            if frontJumpVelocity then
+                frontJumpVelocity:Destroy()
+                frontJumpVelocity = nil
+            end
+        end
+    end
+
+    jumpButton.MouseButton1Click:Connect(toggleFrontJump)
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.H then
+            toggleFrontJump()
+        end
+    end)
+
+    return screenGui
+end
+
+-- Back Jump GUI
+local function createBackJumpGUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BackJumpGUI"
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 120, 0, 50)
+    mainFrame.Position = UDim2.new(0, 10, 0, 130)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    mainFrame.BackgroundTransparency = 0.2
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = mainFrame
+
+    local jumpButton = Instance.new("TextButton")
+    jumpButton.Size = UDim2.new(0, 110, 0, 40)
+    jumpButton.Position = UDim2.new(0, 5, 0, 5)
+    jumpButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    jumpButton.Text = "Back Jump: OFF"
+    jumpButton.TextColor3 = Color3.new(0, 0, 0)
+    jumpButton.Font = Enum.Font.GothamBold
+    jumpButton.TextSize = 12
+    jumpButton.AutoButtonColor = false
+    jumpButton.Parent = mainFrame
+
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 4)
+    buttonCorner.Parent = jumpButton
+
+    local function toggleBackJump()
+        backJumpEnabled = not backJumpEnabled
+        
+        if backJumpEnabled then
+            jumpButton.Text = "Back Jump: ON"
+            startBackJump()
+        else
+            jumpButton.Text = "Back Jump: OFF"
+            if backJumpVelocity then
+                backJumpVelocity:Destroy()
+                backJumpVelocity = nil
+            end
+        end
+    end
+
+    jumpButton.MouseButton1Click:Connect(toggleBackJump)
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.J then
+            toggleBackJump()
+        end
+    end)
+
+    return screenGui
+end
+
+-- Toggle Functions
+local function toggleEzTrimpGUI()
+    if ezTrimpGUI then
+        ezTrimpGUI:Destroy()
+        ezTrimpGUI = nil
+        ezTrimpEnabled = false
+        if ezTrimpVelocity then
+            ezTrimpVelocity:Destroy()
+            ezTrimpVelocity = nil
+        end
+    else
+        ezTrimpGUI = createEzTrimpGUI()
+    end
+end
+
+local function toggleFrontJumpGUI()
+    if frontJumpGUI then
+        frontJumpGUI:Destroy()
+        frontJumpGUI = nil
+        frontJumpEnabled = false
+        if frontJumpVelocity then
+            frontJumpVelocity:Destroy()
+            frontJumpVelocity = nil
+        end
+    else
+        frontJumpGUI = createFrontJumpGUI()
+    end
+end
+
+local function toggleBackJumpGUI()
+    if backJumpGUI then
+        backJumpGUI:Destroy()
+        backJumpGUI = nil
+        backJumpEnabled = false
+        if backJumpVelocity then
+            backJumpVelocity:Destroy()
+            backJumpVelocity = nil
+        end
+    else
+        backJumpGUI = createBackJumpGUI()
+    end
+end
+
+-- Auto Respawn System
+local respawnConnection = nil
+local lastSavedPosition = nil
+local autoRespawnMethod = "Fake Revive"
+
+-- Auto Carry System
+local autoCarryEnabled = false
+local autoCarryConnection = nil
+
+-- Auto Revive System
+local autoReviveEnabled = false
+local reviveLoopHandle = nil
+local interactEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Character"):WaitForChild("Interact")
+
+-- One Press Lag System
+local lagFPS = 1
+local originalFPS = 60
+local lagBusy = false
+local lagGUI = nil
+
+-- Auto Farm System
+local AutoMoneyFarmConnection = nil
+local AutoTurkeyFarmConnection = nil
+local character = nil
+local rootPart = nil
+
+-- Update character dan rootPart ketika karakter berubah
+LocalPlayer.CharacterAdded:Connect(function(char)
+    character = char
+    rootPart = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- Inisialisasi karakter saat pertama kali load
+if LocalPlayer.Character then
+    character = LocalPlayer.Character
+    rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+end
+
+-- Auto Money Farm Functions
+local function startAutoMoneyFarm()
+    local securityPart = workspace:FindFirstChild("SecurityPart")
+    if not securityPart then
+        print("SecurityPart not found")
+        return
+    end
+    
+    AutoMoneyFarmConnection = RunService.Heartbeat:Connect(function()
+        if character and rootPart then
+            local downedPlayerFound = false
+            local playersInGame = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
+            if playersInGame then
+                for _, v in pairs(playersInGame:GetChildren()) do
+                    if v:IsA("Model") and v:GetAttribute("Downed") then
+                        if v:FindFirstChild("RagdollConstraints") then
+                            continue
+                        end
+                        
+                        rootPart.CFrame = v.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                        ReplicatedStorage.Events.Character.Interact:FireServer("Revive", true, v)
+                        task.wait(0.5)
+                        downedPlayerFound = true
+                        break
+                    end
+                end
+            end
+            
+            if not downedPlayerFound then
+                rootPart.CFrame = securityPart.CFrame + Vector3.new(0, 3, 0)
+            end
+        end
+    end)
+end
+
+local function stopAutoMoneyFarm()
+    if AutoMoneyFarmConnection then
+        AutoMoneyFarmConnection:Disconnect()
+        AutoMoneyFarmConnection = nil
+    end
+end
+
+-- Auto Turkey Farm Functions
+local function startAutoTurkeyFarm()
+    local securityPart = workspace:FindFirstChild("SecurityPart")
+    if not securityPart then return end
+    
+    AutoTurkeyFarmConnection = RunService.Heartbeat:Connect(function()
+        if character and rootPart then
+            local targetFound = false
+            
+            -- Cari Turkey di NPCs
+            local npcsFolder = workspace:FindFirstChild("NPCs")
+            if npcsFolder then
+                for _, npc in ipairs(npcsFolder:GetChildren()) do
+                    if npc:IsA("Model") and npc.Name == "Turkey" then
+                        local turkeyHrp = npc:FindFirstChild("HumanoidRootPart")
+                        if turkeyHrp then
+                            rootPart.CFrame = turkeyHrp.CFrame + Vector3.new(0, 3, 0)
+                            targetFound = true
+                            break
+                        end
+                    end
+                end
+            end
+            
+            -- Cari target lain jika tidak ada turkey
+            local playersFolder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
+            if playersFolder and not targetFound then
+                for _, model in ipairs(playersFolder:GetChildren()) do
+                    if model:IsA("Model") then
+                        local modelHrp = model:FindFirstChild("HumanoidRootPart")
+                        if modelHrp then
+                            if model.Name == "Turkey" then
+                                rootPart.CFrame = modelHrp.CFrame + Vector3.new(0, 3, 0)
+                                targetFound = true
+                                break
+                            elseif model:GetAttribute("Downed") then
+                                rootPart.CFrame = modelHrp.CFrame + Vector3.new(0, 3, 0)
+                                targetFound = true
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+            
+            -- Default ke SecurityPart
+            if not targetFound then
+                rootPart.CFrame = securityPart.CFrame + Vector3.new(0, 3, 0)
+            end
+        end
+    end)
+end
+
+local function stopAutoTurkeyFarm()
+    if AutoTurkeyFarmConnection then
+        AutoTurkeyFarmConnection:Disconnect()
+        AutoTurkeyFarmConnection = nil
+    end
+end
+
+local function setFPS(fps)
+    if fps == 0 then
+        setfpscap(1/0)
+    else
+        setfpscap(fps)
+    end
+end
+
+local function onePressLag()
+    if lagBusy then return end
+    lagBusy = true
+    originalFPS = getfpscap() or 60
+    setFPS(lagFPS)
+    task.wait(1)
+    setFPS(originalFPS)
+    lagBusy = false
+end
+
+local function createLagGUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "OnePressLagGUI"
+    gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    gui.ResetOnSpawn = false
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 120, 0, 50)
+    frame.Position = UDim2.new(0, 140, 0, 10)
+    frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    frame.BackgroundTransparency = 0.2
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = gui
+
+    local c1 = Instance.new("UICorner")
+    c1.CornerRadius = UDim.new(0, 6)
+    c1.Parent = frame
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 110, 0, 40)
+    btn.Position = UDim2.new(0, 5, 0, 5)
+    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = "Lag Switch"
+    btn.TextColor3 = Color3.new(0, 0, 0)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.Parent = frame
+
+    local c2 = Instance.new("UICorner")
+    c2.CornerRadius = UDim.new(0, 4)
+    c2.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        onePressLag()
+    end)
+    
+    return gui
+end
+
+local function toggleLagGUI()
+    if lagGUI then
+        lagGUI:Destroy()
+        lagGUI = nil
+    else
+        lagGUI = createLagGUI()
+    end
+end
+
+-- Auto Carry Logic
+local function startAutoCarry()
+    if autoCarryConnection then return end
+    
+    autoCarryConnection = RunService.Heartbeat:Connect(function()
+        if not autoCarryEnabled then return end
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            for _, other in ipairs(Players:GetPlayers()) do
+                if other ~= LocalPlayer and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (hrp.Position - other.Character.HumanoidRootPart.Position).Magnitude
+                    if dist <= 20 then
+                        local args = { "Carry", true, other.Name }
+                        pcall(function()
+                            interactEvent:FireServer(unpack(args))
+                        end)
+                        task.wait(0.01)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function stopAutoCarry()
+    if autoCarryConnection then
+        autoCarryConnection:Disconnect()
+        autoCarryConnection = nil
+    end
+end
+
+-- Auto Revive Logic
+local function isPlayerDowned(pl)
+    if not pl or not pl.Character then return false end
+    local char = pl.Character
+    local humanoid = char:FindFirstChild("Humanoid")
+    if humanoid and humanoid.Health <= 0 then
+        return true
+    end
+    if char.GetAttribute and char:GetAttribute("Downed") == true then
+        return true
+    end
+    return false
+end
+
+local function startAutoRevive()
+    if reviveLoopHandle then return end
+    
+    reviveLoopHandle = task.spawn(function()
+        while autoReviveEnabled do
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local myHRP = char.HumanoidRootPart
+                for _, pl in ipairs(Players:GetPlayers()) do
+                    if pl ~= LocalPlayer then
+                        local otherChar = pl.Character
+                        if otherChar and otherChar:FindFirstChild("HumanoidRootPart") then
+                            if isPlayerDowned(pl) then
+                                local hrp = otherChar.HumanoidRootPart
+                                local success, dist = pcall(function()
+                                    return (myHRP.Position - hrp.Position).Magnitude
+                                end)
+                                if success and dist and dist <= 20 then
+                                    pcall(function()
+                                        interactEvent:FireServer("Revive", true, pl.Name)
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            task.wait(0.5)
+        end
+        reviveLoopHandle = nil
+    end)
+end
+
+local function stopAutoRevive()
+    if reviveLoopHandle then
+        task.cancel(reviveLoopHandle)
+        reviveLoopHandle = nil
+    end
+end
+
+--[[ TABS CREATION ]]
+
+-- Tab Skinnnnn Visualllll
+local TabSkin = Window:Tab({ Title = "Skinnnnn Visualllll", Icon = "user" })
+TabSkin:Section({ Title = "Skin Visual Changer", TextSize = 20 })
+TabSkin:Divider()
+
+TabSkin:Toggle({
+    Title = "Apply Headless & Korblox",
+    Enabled = false,
+    Callback = function(state)
+        if state then
+            -- Apply to local player
+            if LocalPlayer.Character then
+                applyCharacterEffects(LocalPlayer.Character)
+            end
+            LocalPlayer.CharacterAdded:Connect(function(character)
+                applyCharacterEffects(character)
+            end)
+            
+            -- Apply to all players
+            applyToAllPlayersEffects()
+        else
+            -- Note: Untuk menonaktifkan efek, perlu reload character
+            warn("Untuk menonaktifkan efek, silakan reload game atau reset character")
+        end
+    end
+})
+
+TabSkin:Button({
+    Title = "Refresh All Players Effects",
+    Callback = function()
+        applyToAllPlayersEffects()
+    end
+})
+
+-- Tab ESP
+local TabESP = Window:Tab({ Title = "ESP", Icon = "eye" })
+TabESP:Section({ Title = "ESP Settings", TextSize = 20 })
+TabESP:Divider()
+
+TabESP:Toggle({
+    Title = "Player ESP",
+    Enabled = false,
+    Callback = function(state)
+        togglePlayerESP()
+    end
+})
+
+TabESP:Toggle({
+    Title = "Downed Player ESP", 
+    Enabled = false,
+    Callback = function(state)
+        toggleDownedESP()
+    end
+})
+
+-- Tab Player (existing)
+local TabPlayer = Window:Tab({ Title = "Player", Icon = "user" })
+TabPlayer:Section({ Title = "Player Settings", TextSize = 20 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Speed",
+    Placeholder = tostring(currentSettings.Speed),
+    Value = tostring(currentSettings.Speed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.Speed = n
+            getgenv().SpeedSettings.Speed = n
+            applyToTables()
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "JumpCap",
+    Placeholder = tostring(currentSettings.JumpCap),
+    Value = tostring(currentSettings.JumpCap),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.JumpCap = n
+            getgenv().SpeedSettings.JumpCap = n
+            applyToTables()
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "AirStrafe Acceleration",
+    Placeholder = tostring(currentSettings.AirStrafeAcceleration),
+    Value = tostring(currentSettings.AirStrafeAcceleration),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.AirStrafeAcceleration = n
+            getgenv().SpeedSettings.AirStrafeAcceleration = n
+            applyToTables()
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "Front Jump Speed",
+    Placeholder = tostring(currentSettings.FrontJumpSpeed),
+    Value = tostring(currentSettings.FrontJumpSpeed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.FrontJumpSpeed = n
+            getgenv().SpeedSettings.FrontJumpSpeed = n
+            applyFrontJumpSpeed()
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "Gravity Value",
+    Placeholder = tostring(currentSettings.GravityValue),
+    Value = tostring(currentSettings.GravityValue),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.GravityValue = n
+            getgenv().SpeedSettings.GravityValue = n
+            if currentSettings.GravityEnabled then setGravity(n) end
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Enable Gravity",
+    Enabled = currentSettings.GravityEnabled,
+    Callback = function(state)
+        currentSettings.GravityEnabled = state
+        getgenv().SpeedSettings.GravityEnabled = state
+        enableGravityToggle(state)
+    end
+})
+
+-- Ezzz Trimp Section
+TabPlayer:Section({ Title = "Ezzz Trimp", TextSize = 1 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Ezzz Trimp Speed",
+    Placeholder = tostring(ezTrimpSpeed),
+    Value = tostring(ezTrimpSpeed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            ezTrimpSpeed = n
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Show Ezzz Trimp GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleEzTrimpGUI()
+    end
+})
+
+-- Front Jump Section
+TabPlayer:Section({ Title = "Front Jump", TextSize = 1 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Front Jump Speed",
+    Placeholder = tostring(frontJumpSpeed),
+    Value = tostring(frontJumpSpeed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            frontJumpSpeed = n
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Show Front Jump GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleFrontJumpGUI()
+    end
+})
+
+-- Back Jump Section
+TabPlayer:Section({ Title = "Back Jump", TextSize = 1 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Back Jump Speed",
+    Placeholder = tostring(backJumpSpeed),
+    Value = tostring(backJumpSpeed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            backJumpSpeed = n
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Show Back Jump GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleBackJumpGUI()
+    end
+})
+
+-- Fast Revive Section
+TabPlayer:Section({ Title = "Fast Revive", TextSize = 1 })
+TabPlayer:Divider()
+
+TabPlayer:Dropdown({
+    Title = "Fast Revive Method",
+    Values = {"Auto", "Interact"},
+    Value = "Interact",
+    Callback = function(value)
+        featureStates.FastReviveMethod = value
+        
+        stopAutoRevive()
+        if featureStates.FastReviveMethod == "Interact" then
+            featureStates.interactHookActive = false
+        end
+        
+        if featureStates.FastRevive then
+            startAutoRevive()
+        end
+    end
+})
+
+TabPlayer:Section({ Title = "other", TextSize = 1 })
+TabPlayer:Divider()
+
+TabPlayer:Toggle({
+    Title = "Show Lag Switch GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleLagGUI()
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Auto Respawn (Fake Revive)",
+    Enabled = false,
+    Callback = function(state)
+        getgenv().AutoRespawnEnabled = state
+
+        if respawnConnection then
+            respawnConnection:Disconnect()
+            respawnConnection = nil
+        end
+
+        if state then
+            local player = game:GetService("Players").LocalPlayer
+            task.defer(function()
+                while not player.Character do task.wait() end
+                respawnConnection = player.CharacterAdded:Connect(function(character)
+                    task.defer(function()
+                        character:WaitForChild("HumanoidRootPart", 5)
+                        character:WaitForChild("Humanoid", 5)
+
+                        character:GetAttributeChangedSignal("Downed"):Connect(function()
+                            if not getgenv().AutoRespawnEnabled then return end
+                            if character:GetAttribute("Downed") ~= true then return end
+
+                            local hrp = character:FindFirstChild("HumanoidRootPart")
+                            if hrp then lastSavedPosition = hrp.Position end
+
+                            task.wait(3)
+                            local start = tick()
+                            repeat
+                                game:GetService("ReplicatedStorage")
+                                    :WaitForChild("Events", 9e9)
+                                    :WaitForChild("Player", 9e9)
+                                    :WaitForChild("ChangePlayerMode", 9e9)
+                                    :FireServer(true)
+                                task.wait(1)
+                            until character:GetAttribute("Downed") ~= true or tick() - start > 1
+
+                            local newChar
+                            repeat
+                                newChar = player.Character
+                                task.wait()
+                            until newChar and newChar:FindFirstChild("HumanoidRootPart")
+
+                            local newHRP = newChar:FindFirstChild("HumanoidRootPart")
+                            if lastSavedPosition and newHRP then
+                                newHRP.CFrame = CFrame.new(lastSavedPosition)
+                                task.wait(0.5)
+                                if (newHRP.Position - lastSavedPosition).Magnitude > 1 then return end
+                            end
+                        end)
+                    end)
+                end)
+                player.CharacterAdded:Fire(player.Character)
+            end)
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Auto Carry",
+    Enabled = false,
+    Callback = function(state)
+        autoCarryEnabled = state
+        if state then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Auto Revive",
+    Enabled = false,
+    Callback = function(state)
+        autoReviveEnabled = state
+        if state then
+            startAutoRevive()
+        else
+            stopAutoRevive()
+        end
+    end
+})
+
+-- Unlimited Cola Feature
+TabPlayer:Toggle({
+    Title = "Unlimited Cola",
+    Desc = "Block The ''ToolAction:FireServer'' remote when the value is ''(0, 19)'' This feature is a visual So no one can see you drink, Have fun of trick your viewer",
+    Value = false,
+    Callback = function(state)
+        featureStates.UnlimitedCola = state
+        
+        if state then
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local RemoteEvent = ReplicatedStorage.Events.Character.ToolAction
+
+            local mt = getrawmetatable(RemoteEvent)
+            local oldNamecall = mt.__namecall
+
+            local recentBlockTime = 0
+            local blockCooldown = 0.1
+
+            setreadonly(mt, false)
+
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                if method == "FireServer" and args[2] == 19 then
+                    local currentTime = tick()
+                    
+                    if currentTime - recentBlockTime >= blockCooldown then
+                        recentBlockTime = currentTime
+                        return nil
+                    end
+                end
+                
+                return oldNamecall(self, ...)
+            end)
+
+            setreadonly(mt, true)
+
+            featureStates.ColaMetatableHook = {
+                mt = mt,
+                oldNamecall = oldNamecall
+            }
+
+            local Players = game:GetService("Players")
+            local player = Players.LocalPlayer
+            local events = player.PlayerScripts.Events.temporary_events
+
+            featureStates.ColaEventConnection = events.UseKeybind.Event:Connect(function(args)
+                if args.Forced and args.Key == "Cola" and args.Down then
+                    wait(2.15)
+                    firesignal(game:GetService("ReplicatedStorage").Events.Character.SpeedBoost.OnClientEvent, "Cola", 1.4, 3.5, Color3.fromRGB(199, 141, 93))
+                end
+            end)
+
+        else
+            if featureStates.ColaMetatableHook then
+                local mt = featureStates.ColaMetatableHook.mt
+                local oldNamecall = featureStates.ColaMetatableHook.oldNamecall
+                
+                setreadonly(mt, false)
+                mt.__namecall = oldNamecall
+                setreadonly(mt, true)
+                
+                featureStates.ColaMetatableHook = nil
+            end
+            
+            if featureStates.ColaEventConnection then
+                featureStates.ColaEventConnection:Disconnect()
+                featureStates.ColaEventConnection = nil
+            end
+        end
+    end
+})
+
+TabPlayer:Button({
+    Title = "Clear Invis Walls",
+    Callback = function()
+        local invisPartsFolder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Map") and workspace.Game.Map:FindFirstChild("InvisParts")
+        if invisPartsFolder then
+            for _, obj in ipairs(invisPartsFolder:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    obj.CanCollide = false
+                end
+            end
+        end
+    end
+})
+
+-- Emote Tab (Tengah)
+local TabEmote = Window:Tab({ Title = "Emotes Visual", Icon = "zap" })
+TabEmote:Section({ Title = "Emote Changer", TextSize = 20 })
+TabEmote:Divider()
+
+for i = 1, 12 do
+    TabEmote:Input({
+        Title = "Current Emote " .. i,
+        Placeholder = "Enter current emote name",
+        Value = currentEmotes[i],
+        Callback = function(v) currentEmotes[i] = v end
+    })
+end
+for i = 1, 12 do
+    TabEmote:Input({
+        Title = "Select Emote " .. i,
+        Placeholder = "Enter select emote name",
+        Value = selectEmotes[i],
+        Callback = function(v) selectEmotes[i] = v end
+    })
+end
+
+TabEmote:Button({
+    Title = "Apply Emotes",
+    Color = Color3.fromHex("#30ff6a"),
+    Justify = "Center",
+    Callback = function()
+        for i = 1, 12 do
+            emoteEnabled[i] = (currentEmotes[i] ~= "" and selectEmotes[i] ~= "")
+        end
+    end
+})
+
+local emoteFolder = ReplicatedStorage:FindFirstChild("Emotes") or ReplicatedStorage:FindFirstChild("EmoteList")
+if emoteFolder then
+    local idx = 1
+    for _, child in ipairs(emoteFolder:GetChildren()) do
+        if idx > 12 then break end
+        currentEmotes[idx] = child.Name
+        selectEmotes[idx] = "Alt_"..child.Name
+        idx = idx + 1
+    end
+end
+
+-- Cosmetics Tab (Bawah)
+local TabCos = Window:Tab({ Title = "Cosmetics Visual", Icon = "sparkles" })
+TabCos:Section({ Title = "Cosmetic Changer", TextSize = 20 })
+TabCos:Divider()
+
+local cosmetic1, cosmetic2 = ""
+
+TabCos:Input({
+    Title = "Current Cosmetics",
+    Placeholder = "",
+    Callback = function(v) cosmetic1 = v end
+})
+
+TabCos:Input({
+    Title = "Select Cosmetics",
+    Placeholder = "",
+    Callback = function(v) cosmetic2 = v end
+})
+
+TabCos:Button({
+    Title = "Apply Cosmetics",
+    Callback = function()
+        pcall(function()
+            if cosmetic1 == "" or cosmetic2 == "" or cosmetic1 == cosmetic2 then return end
+            
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")    
+            local Cosmetics = ReplicatedStorage:WaitForChild("Items"):WaitForChild("Cosmetics")    
+            
+            local function normalize(str)    
+                return str:gsub("%s+", ""):lower()    
+            end    
+            
+            local function levenshtein(s, t)    
+                local m, n = #s, #t    
+                local d = {}    
+                for i = 0, m do d[i] = {[0] = i} end    
+                for j = 0, n do d[0][j] = j end    
+                
+                for i = 1, m do    
+                    for j = 1, n do    
+                        local cost = (s:sub(i,i) == t:sub(j,j)) and 0 or 1    
+                        d[i][j] = math.min(    
+                            d[i-1][j] + 1,    
+                            d[i][j-1] + 1,    
+                            d[i-1][j-1] + cost    
+                        )    
+                    end    
+                end    
+                return d[m][n]    
+            end    
+            
+            local function similarity(s, t)    
+                local nS, nT = normalize(s), normalize(t)    
+                local dist = levenshtein(nS, nT)    
+                return 1 - dist / math.max(#nS, #nT)    
+            end    
+            
+            local function findSimilar(name)    
+                local bestMatch = name    
+                local bestScore = 0.5    
+                for _, c in ipairs(Cosmetics:GetChildren()) do    
+                    local score = similarity(name, c.Name)    
+                    if score > bestScore then    
+                        bestScore = score    
+                        bestMatch = c.Name    
+                    end    
+                end    
+                return bestMatch    
+            end    
+            
+            cosmetic1 = findSimilar(cosmetic1)    
+            cosmetic2 = findSimilar(cosmetic2)    
+            
+            local a = Cosmetics:FindFirstChild(cosmetic1)    
+            local b = Cosmetics:FindFirstChild(cosmetic2)    
+            if not a or not b then return end    
+            
+            local tempRoot = Instance.new("Folder", Cosmetics)    
+            tempRoot.Name = "__temp_swap_" .. tostring(tick()):gsub("%.", "_")    
+            
+            local tempA = Instance.new("Folder", tempRoot)    
+            local tempB = Instance.new("Folder", tempRoot)    
+            
+            for _, c in ipairs(a:GetChildren()) do c.Parent = tempA end    
+            for _, c in ipairs(b:GetChildren()) do c.Parent = tempB end    
+            
+            for _, c in ipairs(tempA:GetChildren()) do c.Parent = b end    
+            for _, c in ipairs(tempB:GetChildren()) do c.Parent = a end    
+            
+            tempRoot:Destroy()    
+        end)    
+    end
+})
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    applyToTables()
+    applyFrontJumpSpeed()
+    if currentSettings.GravityEnabled then setGravity(currentSettings.GravityValue) end
+end)
+
+print("Rewashi Hub X loaded successfully!")
