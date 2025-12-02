@@ -1,0 +1,1146 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Feature states storage
+local featureStates = {
+    UnlimitedCola = false,
+    ColaMetatableHook = nil,
+    ColaEventConnection = nil,
+    HeadlessEnabled = false,
+    KorbloxEnabled = false
+}
+
+-- Load WindUI
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- Create Window
+local Window = WindUI:CreateWindow({
+    Title = "rewashi Hub X",
+    Author = "by SYFTA",
+    Icon = "ipad",
+    Folder = "Ahaha",
+
+    Size = UDim2.fromOffset(580, 460),
+    Transparent = true,
+    Theme = "Dark",
+    ScrollBarEnabled = false,
+
+    -- default background
+    Background = "rbxassetid://85878831310179",
+})
+
+local Events = ReplicatedStorage:FindFirstChild("Events")
+local CharacterFolder = Events and Events:FindFirstChild("Character")
+local EmoteRemote = CharacterFolder and CharacterFolder:FindFirstChild("Emote")
+local PassCharacterInfo = CharacterFolder and CharacterFolder:FindFirstChild("PassCharacterInfo")
+
+local CosmeticRemote = nil
+if Events then
+    CosmeticRemote = Events:FindFirstChild("Cosmetic") or Events:FindFirstChild("EquipCosmetic") or Events:FindFirstChild("Cosmetics")
+end
+
+if not (EmoteRemote and PassCharacterInfo) then
+    warn("Rewashi: Emote remotes not fully found. Emote changer may not work in this game.")
+end
+if not CosmeticRemote then
+    warn("Rewashi: Cosmetic remote not found automatically. Cosmetic changer may not work unless you set CosmeticRemote manually.")
+end
+
+local currentTag = nil
+local currentEmotes = {}
+local selectEmotes = {}
+local emoteEnabled = {}
+for i = 1, 12 do
+    currentEmotes[i] = ""
+    selectEmotes[i] = ""
+    emoteEnabled[i] = false
+end
+
+local function readTagFromFolder(f)
+    if not f then return nil end
+    local a = f:GetAttribute("Tag")
+    if a ~= nil then return a end
+    local o = f:FindFirstChild("Tag")
+    if o and o:IsA("ValueBase") then return o.Value end
+    return nil
+end
+
+local function onRespawn()
+    repeat task.wait() until Workspace:FindFirstChild("Game") and Workspace.Game:FindFirstChild("Players")
+    local pf = Workspace.Game.Players:FindFirstChild(LocalPlayer.Name) or Workspace.Game.Players:WaitForChild(LocalPlayer.Name,10)
+    if not pf then
+        currentTag = nil
+        return
+    end
+    currentTag = readTagFromFolder(pf)
+end
+
+onRespawn()
+LocalPlayer.CharacterAdded:Connect(onRespawn)
+
+local pendingSlot = nil
+local remoteSignal = PassCharacterInfo and PassCharacterInfo.OnClientEvent
+
+local function fireSelect(slot)
+    if not currentTag or not remoteSignal then return end
+    local b = tonumber(currentTag) or 0
+    local buf = buffer.create(2)
+    buffer.writeu8(buf,0,b)
+    buffer.writeu8(buf,1,17)
+    firesignal(remoteSignal, buf, { selectEmotes[slot] })
+    print(("Rewashi | emote: fired select %d -> %s (tag=%s)"):format(slot, tostring(selectEmotes[slot]), tostring(b)))
+end
+
+if remoteSignal then
+    remoteSignal:Connect(function()
+        if pendingSlot then
+            fireSelect(pendingSlot)
+            pendingSlot = nil
+        end
+    end)
+end
+
+local oldNamecall
+local successHook = pcall(function()
+    oldNamecall = hookmetamethod(game,"__namecall", function(self,...)
+        local m = getnamecallmethod()
+        local a = {...}
+        if m == "FireServer" and self == EmoteRemote and type(a[1]) == "string" then
+            for i = 1, 12 do
+                if emoteEnabled[i] and currentEmotes[i] ~= "" and a[1] == currentEmotes[i] then
+                    pendingSlot = i
+                    task.spawn(function()
+                        task.wait(0.45)
+                        if pendingSlot == i then
+                            fireSelect(i)
+                            pendingSlot = nil
+                        end
+                    end)
+                    return
+                end
+            end
+        end
+        return oldNamecall(self,...)
+    end)
+end)
+
+if not successHook then
+    warn("Rewashi: failed to hook metamethod. Emote auto-replacement might not function.")
+end
+
+local cosCurrent = {}
+local cosSelect = {}
+local cosEnabled = {}
+for i = 1, 1 do
+    cosCurrent[i] = ""
+    cosSelect[i] = ""
+    cosEnabled[i] = false
+end
+
+local function fireCosmetic(newName)
+    if not CosmeticRemote then
+        warn("Cosmetic remote not found")
+        return
+    end
+    local ok, err = pcall(function()
+        if CosmeticRemote.FireServer then
+            CosmeticRemote:FireServer(newName)
+        end
+    end)
+    if not ok then
+        warn("Failed firing cosmetic remote:", err)
+    else
+        print("Rewashi | cosmetic fired:", newName)
+    end
+end
+
+getgenv().SpeedSettings = getgenv().SpeedSettings or {
+    Speed = 1500,
+    JumpCap = 1,
+    AirStrafeAcceleration = 187,
+    GravityValue = 192.0,
+    FrontJumpSpeed = 70,
+    GravityEnabled = false
+}
+local currentSettings = getgenv().SpeedSettings
+
+local requiredFields = {
+    Friction=true, AirStrafeAcceleration=true, JumpHeight=true, RunDeaccel=true,
+    JumpSpeedMultiplier=true, JumpCap=true, SprintCap=true, WalkSpeedMultiplier=true,
+    BhopEnabled=true, Speed=true, AirAcceleration=true, RunAccel=true, SprintAcceleration=true
+}
+
+local function getMatchingTables()
+    local matched = {}
+    for _, obj in pairs(getgc(true)) do
+        if typeof(obj) == "table" then
+            local ok = true
+            for field in pairs(requiredFields) do
+                if rawget(obj, field) == nil then ok = false; break end
+            end
+            if ok then table.insert(matched, obj) end
+        end
+    end
+    return matched
+end
+
+local function applyToTables()
+    for _, t in ipairs(getMatchingTables()) do
+        pcall(function()
+            t.Speed = currentSettings.Speed
+            t.JumpCap = currentSettings.JumpCap
+            t.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
+        end)
+    end
+end
+
+local originalGravity = Workspace.Gravity
+local gravityToggled = false
+local function setGravity(val)
+    if type(val) ~= "number" then return end
+    Workspace.Gravity = val
+end
+local function enableGravityToggle(enable)
+    gravityToggled = enable
+    if enable then
+        setGravity(currentSettings.GravityValue or originalGravity)
+    else
+        setGravity(originalGravity)
+    end
+end
+
+local function applyFrontJumpSpeed()
+    for _, t in ipairs(getMatchingTables()) do
+        pcall(function()
+            if rawget(t, "FrontJumpSpeed") ~= nil then
+                t.FrontJumpSpeed = currentSettings.FrontJumpSpeed
+            end
+        end)
+    end
+end
+
+-- Headless Function untuk LocalPlayer
+local function applyHeadless(head)
+    if not head then return end
+
+    -- Make head transparent
+    head.Transparency = 1
+    head.CanCollide = false
+
+    -- Remove face decal if exists
+    local face = head:FindFirstChild("face")
+    if face then
+        face:Destroy()
+    end
+
+    -- Add tiny invisible mesh to prevent head from reappearing
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshType = Enum.MeshType.Head
+    mesh.Scale = Vector3.new(0.001, 0.001, 0.001)
+    mesh.Parent = head
+
+    -- Ensure head stays transparent
+    local connection
+    connection = head:GetPropertyChangedSignal("Transparency"):Connect(function()
+        if head.Transparency ~= 1 then
+            head.Transparency = 1
+        end
+    end)
+
+    -- Remove face if added later
+    head.ChildAdded:Connect(function(child)
+        if child.Name == "face" and child:IsA("Decal") then
+            child:Destroy()
+        end
+    end)
+
+    return connection
+end
+
+-- Korblox Function untuk LocalPlayer
+local function applyKorblox(character)
+    -- Find right leg (for R6 or R15)
+    local rightLeg = character:FindFirstChild("Right Leg")
+    if not rightLeg then
+        rightLeg = character:FindFirstChild("RightUpperLeg")
+    end
+    
+    if not rightLeg then
+        warn("Right leg not found for Korblox!")
+        return
+    end
+
+    -- Set leg color to dark grey/black for Korblox effect
+    rightLeg.Color = Color3.fromRGB(30, 30, 30)
+    
+    -- Ensure color stays dark
+    local connection
+    connection = rightLeg:GetPropertyChangedSignal("Color"):Connect(function()
+        if rightLeg.Color ~= Color3.fromRGB(30, 30, 30) then
+            rightLeg.Color = Color3.fromRGB(30, 30, 30)
+        end
+    end)
+
+    return connection
+end
+
+-- Function to apply visual effects to character (LocalPlayer only)
+local function applyVisualEffects(character)
+    local head = character:FindFirstChild("Head")
+    
+    -- Apply headless if enabled (LocalPlayer only)
+    if featureStates.HeadlessEnabled and head then
+        if featureStates.headlessConnection then
+            featureStates.headlessConnection:Disconnect()
+        end
+        featureStates.headlessConnection = applyHeadless(head)
+    elseif head then
+        -- Restore head if disabled
+        head.Transparency = 0
+        local mesh = head:FindFirstChildWhichIsA("SpecialMesh")
+        if mesh and mesh.Scale == Vector3.new(0.001, 0.001, 0.001) then
+            mesh:Destroy()
+        end
+    end
+    
+    -- Apply Korblox if enabled (LocalPlayer only)
+    if featureStates.KorbloxEnabled then
+        if featureStates.korbloxConnection then
+            featureStates.korbloxConnection:Disconnect()
+        end
+        featureStates.korbloxConnection = applyKorblox(character)
+    else
+        -- Restore leg color if disabled
+        local rightLeg = character:FindFirstChild("Right Leg") or character:FindFirstChild("RightUpperLeg")
+        if rightLeg then
+            rightLeg.Color = Color3.fromRGB(163, 162, 165) -- Default Roblox color
+        end
+    end
+end
+
+-- Connect to character added event (LocalPlayer only)
+LocalPlayer.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Head", 5)
+    character:WaitForChild("HumanoidRootPart", 5)
+    
+    if featureStates.HeadlessEnabled or featureStates.KorbloxEnabled then
+        applyVisualEffects(character)
+    end
+end)
+
+-- Front Jump System
+local frontJumpEnabled = false
+local frontJumpSpeed = 70
+local frontJumpVelocity = nil
+local frontAutoJumpEnabled = false
+local frontJumpGUI = nil
+
+-- Back Jump System
+local backJumpEnabled = false
+local backJumpSpeed = 70
+local backJumpVelocity = nil
+local backAutoJumpEnabled = false
+local backJumpGUI = nil
+
+-- Auto Jump System
+local autoJumpEnabled = false
+local autoJumpGUI = nil
+
+-- Auto Respawn System
+local respawnConnection = nil
+local lastSavedPosition = nil
+local autoRespawnMethod = "Random"
+
+-- Get Interact Event
+local interactEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Character"):WaitForChild("Interact")
+
+-- Auto Carry System dengan GUI
+local autoCarryEnabled = false
+local autoCarryConnection = nil
+local autoCarryGUI = nil
+
+-- Auto Revive System dengan GUI
+local autoReviveEnabled = false
+local reviveLoopHandle = nil
+local autoReviveGUI = nil
+
+-- Ezz Bounce System
+local autoBounceEnabled = false
+local bounceLoopHandle = nil
+local ezzBounceGUI = nil
+local bouncePower = 100
+local groundCheckDistance = 6
+
+-- Create Visual Tab
+local TabVisual = Window:Tab({ Title = "Visual", Icon = "eye" })
+
+-- TAMBAHKAN: Fake Streaks Section di paling atas Tab Visual
+TabVisual:Section({ Title = "Fake Streaks", TextSize = 20 })
+TabVisual:Divider()
+
+-- Variable untuk Fake Streaks Input
+local FakeStreaksInput
+
+-- Create Fake Streaks Input
+FakeStreaksInput = TabVisual:Input({
+    Title = "Fake Streaks", 
+    Placeholder = "Enter streak value",
+    Callback = function(value)
+        local num = tonumber(value)
+        if num then
+            LocalPlayer:SetAttribute("Streak", num)
+            print("Fake Streaks: Set to", num)
+        end
+    end
+})
+
+-- Inisialisasi nilai saat pertama kali
+task.spawn(function()
+    task.wait(1)
+    local currentStreak = LocalPlayer:GetAttribute("Streak")
+    if currentStreak then
+        FakeStreaksInput:Set(tostring(currentStreak))
+    end
+end)
+
+-- Headless Section untuk LocalPlayer
+TabVisual:Section({ Title = "Headless (LocalPlayer)", TextSize = 20 })
+TabVisual:Divider()
+
+TabVisual:Toggle({
+    Title = "Headless",
+    Desc = "Makes your character headless (only for you)",
+    Enabled = featureStates.HeadlessEnabled,
+    Callback = function(state)
+        featureStates.HeadlessEnabled = state
+        
+        if state then
+            local character = LocalPlayer.Character
+            if character then
+                local head = character:FindFirstChild("Head")
+                if head then
+                    applyVisualEffects(character)
+                else
+                    -- Wait for head if character just spawned
+                    character:WaitForChild("Head", 5)
+                    if character:FindFirstChild("Head") then
+                        applyVisualEffects(character)
+                    end
+                end
+            end
+        else
+            -- Restore head if character exists
+            local character = LocalPlayer.Character
+            if character then
+                local head = character:FindFirstChild("Head")
+                if head then
+                    head.Transparency = 0
+                    local mesh = head:FindFirstChildWhichIsA("SpecialMesh")
+                    if mesh and mesh.Scale == Vector3.new(0.001, 0.001, 0.001) then
+                        mesh:Destroy()
+                    end
+                end
+            end
+            
+            if featureStates.headlessConnection then
+                featureStates.headlessConnection:Disconnect()
+                featureStates.headlessConnection = nil
+            end
+        end
+    end
+})
+
+-- Korblox Section untuk LocalPlayer
+TabVisual:Section({ Title = "Korblox (LocalPlayer)", TextSize = 20 })
+TabVisual:Divider()
+
+TabVisual:Toggle({
+    Title = "Korblox Leg",
+    Desc = "Gives your right leg a Korblox appearance (only for you)",
+    Enabled = featureStates.KorbloxEnabled,
+    Callback = function(state)
+        featureStates.KorbloxEnabled = state
+        
+        if state then
+            local character = LocalPlayer.Character
+            if character then
+                applyVisualEffects(character)
+            end
+        else
+            -- Restore leg color if character exists
+            local character = LocalPlayer.Character
+            if character then
+                local rightLeg = character:FindFirstChild("Right Leg") or character:FindFirstChild("RightUpperLeg")
+                if rightLeg then
+                    rightLeg.Color = Color3.fromRGB(163, 162, 165) -- Default Roblox color
+                end
+            end
+            
+            if featureStates.korbloxConnection then
+                featureStates.korbloxConnection:Disconnect()
+                featureStates.korbloxConnection = nil
+            end
+        end
+    end
+})
+
+-- Cosmetics Section
+TabVisual:Section({ Title = "Cosmetics", TextSize = 20 })
+TabVisual:Divider()
+
+local cosmetic1, cosmetic2 = ""
+
+TabVisual:Input({
+    Title = "Current Cosmetics",
+    Placeholder = "",
+    Callback = function(v) cosmetic1 = v end
+})
+
+TabVisual:Input({
+    Title = "Select Cosmetics",
+    Placeholder = "",
+    Callback = function(v) cosmetic2 = v end
+})
+
+TabVisual:Button({
+    Title = "Apply Cosmetics",
+    Callback = function()
+        pcall(function()
+            if cosmetic1 == "" or cosmetic2 == "" or cosmetic1 == cosmetic2 then return end
+            
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")    
+            local Cosmetics = ReplicatedStorage:WaitForChild("Items"):WaitForChild("Cosmetics")    
+            
+            local function normalize(str)    
+                return str:gsub("%s+", ""):lower()    
+            end    
+            
+            local function levenshtein(s, t)    
+                local m, n = #s, #t    
+                local d = {}    
+                for i = 0, m do d[i] = {[0] = i} end    
+                for j = 0, n do d[0][j] = j end    
+                
+                for i = 1, m do    
+                    for j = 1, n do    
+                        local cost = (s:sub(i,i) == t:sub(j,j)) and 0 or 1    
+                        d[i][j] = math.min(    
+                            d[i-1][j] + 1,    
+                            d[i][j-1] + 1,    
+                            d[i-1][j-1] + cost    
+                        )    
+                    end    
+                end    
+                return d[m][n]    
+            end    
+            
+            local function similarity(s, t)    
+                local nS, nT = normalize(s), normalize(t)    
+                local dist = levenshtein(nS, nT)    
+                return 1 - dist / math.max(#nS, #nT)    
+            end    
+            
+            local function findSimilar(name)    
+                local bestMatch = name    
+                local bestScore = 0.5    
+                for _, c in ipairs(Cosmetics:GetChildren()) do    
+                    local score = similarity(name, c.Name)    
+                    if score > bestScore then    
+                        bestScore = score    
+                        bestMatch = c.Name    
+                    end    
+                end    
+                return bestMatch    
+            end    
+            
+            cosmetic1 = findSimilar(cosmetic1)    
+            cosmetic2 = findSimilar(cosmetic2)    
+            
+            local a = Cosmetics:FindFirstChild(cosmetic1)    
+            local b = Cosmetics:FindFirstChild(cosmetic2)    
+            if not a or not b then return end    
+            
+            local tempRoot = Instance.new("Folder", Cosmetics)    
+            tempRoot.Name = "__temp_swap_" .. tostring(tick()):gsub("%.", "_")    
+            
+            local tempA = Instance.new("Folder", tempRoot)    
+            local tempB = Instance.new("Folder", tempRoot)    
+            
+            for _, c in ipairs(a:GetChildren()) do c.Parent = tempA end    
+            for _, c in ipairs(b:GetChildren()) do c.Parent = tempB end    
+            
+            for _, c in ipairs(tempA:GetChildren()) do c.Parent = b end    
+            for _, c in ipairs(tempB:GetChildren()) do c.Parent = a end    
+            
+            tempRoot:Destroy()    
+        end)    
+    end
+})
+
+-- Emotes Section
+TabVisual:Section({ Title = "Emotes", TextSize = 20 })
+TabVisual:Divider()
+
+for i = 1, 12 do
+    TabVisual:Input({
+        Title = "Current Emote " .. i,
+        Placeholder = "Enter current emote name",
+        Value = currentEmotes[i],
+        Callback = function(v) currentEmotes[i] = v end
+    })
+end
+for i = 1, 12 do
+    TabVisual:Input({
+        Title = "Select Emote " .. i,
+        Placeholder = "Enter select emote name",
+        Value = selectEmotes[i],
+        Callback = function(v) selectEmotes[i] = v end
+    })
+end
+
+TabVisual:Button({
+    Title = "Apply Emotes",
+    Color = Color3.fromHex("#30ff6a"),
+    Justify = "Center",
+    Callback = function()
+        for i = 1, 12 do
+            emoteEnabled[i] = (currentEmotes[i] ~= "" and selectEmotes[i] ~= "")
+        end
+    end
+})
+
+-- Load default emotes if available
+local emoteFolder = ReplicatedStorage:FindFirstChild("Emotes") or ReplicatedStorage:FindFirstChild("EmoteList")
+if emoteFolder then
+    local idx = 1
+    for _, child in ipairs(emoteFolder:GetChildren()) do
+        if idx > 12 then break end
+        currentEmotes[idx] = child.Name
+        selectEmotes[idx] = "Alt_"..child.Name
+        idx = idx + 1
+    end
+end
+
+local TabPlayer = Window:Tab({ Title = "Player", Icon = "user" })
+
+-- VARIABEL UNTUK INFINITE SLIDE
+local infiniteSlideEnabled = false
+local slideFrictionValue = 0
+local infiniteSlideCachedTables = nil
+local infiniteSlidePlrModel = nil
+local infiniteSlideConnection = nil
+
+-- INFINITE SLIDE LOGIC
+local infiniteSlideKeys = {
+    "Friction","AirStrafeAcceleration","JumpHeight","RunDeaccel",
+    "JumpSpeedMultiplier","JumpCap","SprintCap","WalkSpeedMultiplier",
+    "BhopEnabled","Speed","AirAcceleration","RunAccel","SprintAcceleration"
+}
+
+local function infiniteSlideHasAll(tbl)
+    if type(tbl) ~= "table" then return false end
+    for _, k in ipairs(infiniteSlideKeys) do 
+        if rawget(tbl, k) == nil then return false end 
+    end
+    return true
+end
+
+local function infiniteSlideSetFriction(value)
+    if not infiniteSlideCachedTables then return end
+    for _, t in ipairs(infiniteSlideCachedTables) do
+        pcall(function() 
+            if rawget(t, "Friction") ~= nil then
+                t.Friction = value 
+            end
+        end)
+    end
+end
+
+local function infiniteSlideUpdatePlayerModel()
+    local GameFolder = workspace:FindFirstChild("Game")
+    local PlayersFolder = GameFolder and GameFolder:FindFirstChild("Players")
+    if PlayersFolder then 
+        infiniteSlidePlrModel = PlayersFolder:FindFirstChild(LocalPlayer.Name) 
+    else 
+        infiniteSlidePlrModel = nil 
+    end
+end
+
+local function infiniteSlideOnHeartbeat()
+    if not infiniteSlidePlrModel then 
+        infiniteSlideSetFriction(5)
+        return 
+    end
+    
+    local success, currentState = pcall(function() 
+        return infiniteSlidePlrModel:GetAttribute("State") 
+    end)
+    
+    if success and currentState then
+        if currentState == "Slide" then
+            pcall(function() 
+                infiniteSlidePlrModel:SetAttribute("State", "EmotingSlide") 
+            end)
+        elseif currentState == "EmotingSlide" then
+            infiniteSlideSetFriction(slideFrictionValue)
+        else 
+            infiniteSlideSetFriction(5) 
+        end
+    else 
+        infiniteSlideSetFriction(5) 
+    end
+end
+
+local function startInfiniteSlide()
+    if infiniteSlideConnection then return end
+    
+    infiniteSlideCachedTables = {}
+    for _, obj in ipairs(getgc(true)) do
+        local success, result = pcall(function() 
+            if infiniteSlideHasAll(obj) then 
+                return obj 
+            end 
+        end)
+        if success and result then 
+            table.insert(infiniteSlideCachedTables, result) 
+        end
+    end
+    
+    infiniteSlideUpdatePlayerModel()
+    
+    infiniteSlideConnection = RunService.Heartbeat:Connect(infiniteSlideOnHeartbeat)
+    
+    LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(0.1)
+        infiniteSlideUpdatePlayerModel()
+    end)
+end
+
+local function stopInfiniteSlide()
+    if infiniteSlideCachedTables then
+        for _, t in ipairs(infiniteSlideCachedTables) do
+            pcall(function() 
+                if rawget(t, "Friction") ~= nil then
+                    t.Friction = 5 
+                end
+            end)
+        end
+        infiniteSlideCachedTables = nil
+    end
+    
+    infiniteSlidePlrModel = nil
+    
+    if infiniteSlideConnection then
+        infiniteSlideConnection:Disconnect()
+        infiniteSlideConnection = nil
+    end
+end
+
+-- ADDED: Infinite Slide Section at the top of Player Tab
+TabPlayer:Section({ Title = "Infinite Slide", TextSize = 20 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Slide Friction",
+    Placeholder = "0",
+    Value = "0",
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            slideFrictionValue = n
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Enable Infinite Slide",
+    Desc = "Allows you to slide indefinitely with low friction",
+    Enabled = false,
+    Callback = function(state)
+        infiniteSlideEnabled = state
+        
+        if state then
+            startInfiniteSlide()
+        else
+            stopInfiniteSlide()
+        end
+    end
+})
+
+-- Player Settings Section
+TabPlayer:Section({ Title = "Player Settings", TextSize = 20 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Speed",
+    Placeholder = tostring(currentSettings.Speed),
+    Value = tostring(currentSettings.Speed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.Speed = n
+            getgenv().SpeedSettings.Speed = n
+            applyToTables()
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "JumpCap",
+    Placeholder = tostring(currentSettings.JumpCap),
+    Value = tostring(currentSettings.JumpCap),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.JumpCap = n
+            getgenv().SpeedSettings.JumpCap = n
+            applyToTables()
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "AirStrafe Acceleration",
+    Placeholder = tostring(currentSettings.AirStrafeAcceleration),
+    Value = tostring(currentSettings.AirStrafeAcceleration),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.AirStrafeAcceleration = n
+            getgenv().SpeedSettings.AirStrafeAcceleration = n
+            applyToTables()
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "Front Jump Speed",
+    Placeholder = tostring(currentSettings.FrontJumpSpeed),
+    Value = tostring(currentSettings.FrontJumpSpeed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.FrontJumpSpeed = n
+            getgenv().SpeedSettings.FrontJumpSpeed = n
+            applyFrontJumpSpeed()
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "Gravity Value",
+    Placeholder = tostring(currentSettings.GravityValue),
+    Value = tostring(currentSettings.GravityValue),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            currentSettings.GravityValue = n
+            getgenv().SpeedSettings.GravityValue = n
+            if currentSettings.GravityEnabled then setGravity(n) end
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Enable Gravity",
+    Enabled = currentSettings.GravityEnabled,
+    Callback = function(state)
+        currentSettings.GravityEnabled = state
+        getgenv().SpeedSettings.GravityEnabled = state
+        enableGravityToggle(state)
+    end
+})
+
+-- Front Jump Section
+TabPlayer:Section({ Title = "Front jump", TextSize = 1 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Front Jump Speed",
+    Placeholder = tostring(frontJumpSpeed),
+    Value = tostring(frontJumpSpeed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            frontJumpSpeed = n
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Front Jump GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleFrontJumpGUI()
+    end
+})
+
+-- Back Jump Section
+TabPlayer:Section({ Title = "Back Jump", TextSize = 1 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Back Jump Speed",
+    Placeholder = tostring(backJumpSpeed),
+    Value = tostring(backJumpSpeed),
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            backJumpSpeed = n
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Back Jump GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleBackJumpGUI()
+    end
+})
+
+-- TAMBAHKAN: Ezz Bounce Section
+TabPlayer:Section({ Title = "Ezz Bounce", TextSize = 20 })
+TabPlayer:Divider()
+
+TabPlayer:Input({
+    Title = "Bounce Power",
+    Placeholder = "100",
+    Value = "100",
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            bouncePower = n
+            print("Bounce Power set to:", bouncePower)
+        end
+    end
+})
+
+TabPlayer:Input({
+    Title = "Ground Check Distance",
+    Placeholder = "6",
+    Value = "6",
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            groundCheckDistance = n
+            print("Ground Check Distance set to:", groundCheckDistance)
+        end
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Ezz Bounce GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleEzzBounceGUI()
+    end
+})
+
+TabPlayer:Section({ Title = "other", TextSize = 1 })
+TabPlayer:Divider()
+
+TabPlayer:Toggle({
+    Title = "Show Auto Jump GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleAutoJumpGUI()
+    end
+})
+
+TabPlayer:Toggle({
+    Title = "Auto Respawn",
+    Enabled = false,
+    Callback = function(state)
+        getgenv().AutoRespawnEnabled = state
+
+        if respawnConnection then
+            respawnConnection:Disconnect()
+            respawnConnection = nil
+        end
+
+        if state then
+            local player = game:GetService("Players").LocalPlayer
+            task.defer(function()
+                while not player.Character do task.wait() end
+                respawnConnection = player.CharacterAdded:Connect(function(character)
+                    task.defer(function()
+                        character:WaitForChild("HumanoidRootPart", 5)
+                        character:WaitForChild("Humanoid", 5)
+
+                        character:GetAttributeChangedSignal("Downed"):Connect(function()
+                            if not getgenv().AutoRespawnEnabled then return end
+                            if character:GetAttribute("Downed") ~= true then return end
+                            if autoRespawnMethod ~= "Fake Revive" then return end
+
+                            local hrp = character:FindFirstChild("HumanoidRootPart")
+                            if hrp then lastSavedPosition = hrp.Position end
+
+                            task.wait(3)
+                            local start = tick()
+                            repeat
+                                game:GetService("ReplicatedStorage")
+                                    :WaitForChild("Events", 9e9)
+                                    :WaitForChild("Player", 9e9)
+                                    :WaitForChild("ChangePlayerMode", 9e9)
+                                    :FireServer(true)
+                                task.wait(1)
+                            until character:GetAttribute("Downed") ~= true or tick() - start > 1
+
+                            local newChar
+                            repeat
+                                newChar = player.Character
+                                task.wait()
+                            until newChar and newChar:FindFirstChild("HumanoidRootPart")
+
+                            local newHRP = newChar:FindFirstChild("HumanoidRootPart")
+                            if lastSavedPosition and newHRP then
+                                newHRP.CFrame = CFrame.new(lastSavedPosition)
+                                task.wait(0.5)
+                                if (newHRP.Position - lastSavedPosition).Magnitude > 1 then return end
+                            end
+                        end)
+                    end)
+                end)
+                player.CharacterAdded:Fire(player.Character)
+            end)
+        end
+    end
+})
+
+-- GANTI DENGAN SCRIPT BARU: Auto Carry GUI
+TabPlayer:Toggle({
+    Title = "Auto Carry GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleAutoCarryGUI()
+    end
+})
+
+-- GANTI DENGAN SCRIPT BARU: Auto Revive GUI
+TabPlayer:Toggle({
+    Title = "Auto Revive GUI",
+    Enabled = false,
+    Callback = function(state)
+        toggleAutoReviveGUI()
+    end
+})
+
+-- Unlimited Cola Feature
+TabPlayer:Toggle({
+    Title = "Unlimited Cola",
+    Desc = "Block The ''ToolAction:FireServer'' remote when the value is ''(0, 19)'' This feature is a visual So no one can see you drink, Have fun of trick your viewer",
+    Value = false,
+    Callback = function(state)
+        featureStates.UnlimitedCola = state
+        
+        if state then
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local RemoteEvent = ReplicatedStorage.Events.Character.ToolAction
+
+            local mt = getrawmetatable(RemoteEvent)
+            local oldNamecall = mt.__namecall
+
+            local recentBlockTime = 0
+            local blockCooldown = 0.1
+
+            setreadonly(mt, false)
+
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                if method == "FireServer" and args[2] == 19 then
+                    local currentTime = tick()
+                    
+                    if currentTime - recentBlockTime >= blockCooldown then
+                        recentBlockTime = currentTime
+                        return nil
+                    end
+                end
+                
+                return oldNamecall(self, ...)
+            end)
+
+            setreadonly(mt, true)
+
+            featureStates.ColaMetatableHook = {
+                mt = mt,
+                oldNamecall = oldNamecall
+            }
+
+            local Players = game:GetService("Players")
+            local player = Players.LocalPlayer
+            local events = player.PlayerScripts.Events.temporary_events
+
+            featureStates.ColaEventConnection = events.UseKeybind.Event:Connect(function(args)
+                if args.Forced and args.Key == "Cola" and args.Down then
+                    wait(2.15)
+                    firesignal(game:GetService("ReplicatedStorage").Events.Character.SpeedBoost.OnClientEvent, "Cola", 1.4, 3.5, Color3.fromRGB(199, 141, 93))
+                end
+            end)
+
+        else
+            if featureStates.ColaMetatableHook then
+                local mt = featureStates.ColaMetatableHook.mt
+                local oldNamecall = featureStates.ColaMetatableHook.oldNamecall
+                
+                setreadonly(mt, false)
+                mt.__namecall = oldNamecall
+                setreadonly(mt, true)
+                
+                featureStates.ColaMetatableHook = nil
+            end
+            
+            if featureStates.ColaEventConnection then
+                featureStates.ColaEventConnection:Disconnect()
+                featureStates.ColaEventConnection = nil
+            end
+        end
+    end
+})
+
+TabPlayer:Button({
+    Title = "Clear Invis Walls",
+    Callback = function()
+        local invisPartsFolder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Map") and workspace.Game.Map:FindFirstChild("InvisParts")
+        if invisPartsFolder then
+            for _, obj in ipairs(invisPartsFolder:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    obj.CanCollide = false
+                end
+            end
+        end
+    end
+})
+
+-- Apply settings on character respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    applyToTables()
+    applyFrontJumpSpeed()
+    if currentSettings.GravityEnabled then setGravity(currentSettings.GravityValue) end
+    
+    -- Apply visual effects if enabled
+    if featureStates.HeadlessEnabled or featureStates.KorbloxEnabled then
+        task.wait(1) -- Wait a bit for character to fully load
+        local character = LocalPlayer.Character
+        if character then
+            applyVisualEffects(character)
+        end
+    end
+end)
+
+-- Fungsi untuk GUI yang belum didefinisikan (akan dilengkapi nanti)
+local function toggleFrontJumpGUI() print("Front Jump GUI function needs implementation") end
+local function toggleBackJumpGUI() print("Back Jump GUI function needs implementation") end
+local function toggleAutoJumpGUI() print("Auto Jump GUI function needs implementation") end
+local function toggleAutoCarryGUI() print("Auto Carry GUI function needs implementation") end
+local function toggleAutoReviveGUI() print("Auto Revive GUI function needs implementation") end
+local function toggleEzzBounceGUI() print("Ezz Bounce GUI function needs implementation") end
+
+print("Rewashi Hub X loaded successfully!")
