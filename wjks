@@ -79,15 +79,15 @@ local Window = WindUI:CreateWindow({
     HideSearchBar = true,
     Theme = "Dark",
     Size = UDim2.fromOffset(1000, 460),
-
     Background = "rbxassetid://",
     KeySystem = {
-    Note = "access our Discord to get the key!",
-    API = {
-   {Type = "mysuperservicetogetkey"},
-},
-},
+        Note = "access our Discord to get the key!",
+        API = {
+            {Type = "mysuperservicetogetkey"},
+        },
+    },
 })
+
 Window:EditOpenButton({
     Title = "WhakizashiX-Hub-X",
     Icon = "app-window",
@@ -131,11 +131,11 @@ Window:Tag({
 local WhakizashiXTab = Tabs.Imp:Tab({ Title = "WhakizashiX", Icon = "github" })
 local DiscordTab = Tabs.Imp:Tab({ Title = "Discord", Icon = "link" })
 local MainTab = Tabs.Main:Tab({ Title = "Player", Icon = "star" })
-local VisualsTab = Tabs.Main:Tab({ Title = "Esp", Icon = "lock", Locked = "True" })
-local AutoFarmTab = Tabs.Main:Tab({ Title = "AutoFarm", Icon = "lock", Locked = "True" })
+local VisualsTab = Tabs.Main:Tab({ Title = "Esp", Icon = "lock" })
+local AutoFarmTab = Tabs.Main:Tab({ Title = "AutoFarm", Icon = "lock" })
 local VisualTab = Tabs.Main:Tab({ Title = "Visual", Icon = "sparkles" })
-local GameTab = Tabs.Customise:Tab({ Title = "Game Settings", Icon = "lock", Locked = "True" })
-local WindowTab = Tabs.Customise:Tab({ Title = "WhakizashiX settings", Icon = "lock", Locked = "True" })
+local GameTab = Tabs.Customise:Tab({ Title = "Game Settings", Icon = "lock" })
+local WindowTab = Tabs.Customise:Tab({ Title = "WhakizashiX settings", Icon = "lock" })
 local Keybind = Tabs.Customise:Tab({ Title = "Keybind", Icon = "keyboard" })
 
 
@@ -144,7 +144,7 @@ end
 -- Seção About
 WhakizashiXTab:Paragraph({    
         Title = "About WhakizashiX",    
-        Desc = "Made By : Svc8,  Special thanks: pakaucsk, ciumesblood, .muryl_ozl, _imxired, tjtinhaa, maxghosttt, Pnsdg" ,
+        Desc = "Made By : Svc8,  Special thanks: pakaucsk, ciumesblood, .muryl_ozl, _imxired, tjtinhaa, maxghosttt, Pnsdg, syfta" ,
         Thumbnail = "rbxassetid://125307920527809",
         ThumbnailSize = 60,
 })
