@@ -71,31 +71,31 @@ WindUI.Services.mysuperservicetogetkey = {
 }
 
 local Window = WindUI:CreateWindow({
-   Title = "WhakizashiX",
-   Icon = "spiral",
-   Author = "scv8",
-   Folder = "WhakizashiX-Hub-X",
-   NewElements = true,
-   HideSearchBar = true,
-   Theme = "Dark",
-   Size = UDim2.fromOffset(1000, 460),
+    Title = "WhakizashiX",
+    Icon = "spiral",
+    Author = "scv8",
+    Folder = "WhakizashiX-Hub-X",
+    NewElements = true,
+    HideSearchBar = true,
+    Theme = "Dark",
+    Size = UDim2.fromOffset(1000, 460),
 
-  Background = "rbxassetid://",
-  KeySystem = {
-  Note = "access our Discord to get the key!",
-  API = {
-  {Type = "mysuperservicetogetkey"},
+    Background = "rbxassetid://",
+    KeySystem = {
+    Note = "access our Discord to get the key!",
+    API = {
+   {Type = "mysuperservicetogetkey"},
 },
 },
 })
 Window:EditOpenButton({
-   Title = "WhakizashiX-Hub-X",
-   Icon = "app-window",
-   CornerRadius = UDim.new(0,16),
-   StrokeThickness = 0,
-   Color = ColorSequence.new(Color3.fromRGB(255,0,0), Color3.fromRGB(200,50,0)),
-   Enabled = true,
-   Draggable = true,
+    Title = "WhakizashiX-Hub-X",
+    Icon = "app-window",
+    CornerRadius = UDim.new(0,16),
+    StrokeThickness = 0,
+    Color = ColorSequence.new(Color3.fromRGB(255,0,0), Color3.fromRGB(200,50,0)),
+    Enabled = true,
+    Draggable = true,
 })
 
 local Tabs = {}
