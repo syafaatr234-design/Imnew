@@ -107,7 +107,6 @@ Tabs.Imp = Window:Section({
     Opened = true,
 })
 
-
 Tabs.Main = Window:Section({
     Title = "Main",
     Icon = "flame",
@@ -163,9 +162,6 @@ WhakizashiX 1.0.0.1
 })
 
 WhakizashiXTab:Select() -- Select Tab
-
-
-
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -968,7 +964,6 @@ local function createLagSwitchGUI()
     return screenGui
 end
 
-
 -- =======================
 -- MainTab Toggles e Inputs finais
 -- =======================
@@ -996,7 +991,6 @@ MainTab:Toggle({
         end
     end
 })
-
 
 -- AutoJump Acceleration Input
 MainTab:Input({
@@ -1386,7 +1380,6 @@ if ChangePlayerMode and ChangePlayerMode:IsA("RemoteEvent") then
 	end)
 end
 
-
 -- Serviços
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1459,7 +1452,6 @@ respawnConnection = player.CharacterAdded:Connect(function(newChar)
     task.wait(1)
     if featureStates.AutoSelfRevive then setupAutoRevive(newChar) end
 end)    
-
 
 MainTab:Space()
 
@@ -1704,7 +1696,6 @@ MainTab:Input({
 
 MainTab:Space()
 
-
 MainTab:Space()
 
 -- Função genérica para criar keybind com toggle e notificação
@@ -1835,7 +1826,6 @@ GameTab:Button({
     end  
 })  
 
-
 GameTab:Button({  
     Title = "SetFpsCapMax",  
     Description = "Sets the FPS cap to a very high value",  
@@ -1844,15 +1834,13 @@ GameTab:Button({
     end  
 })  
 
-
 GameTab:Button({  
     Title = "HideSkybox",  
     Description = "Removes the skybox for better performance",  
     Callback = function()  
         game.Lighting.Sky = nil  
     end  
-})  
-
+})
 
 GameTab:Button({  
     Title = "DisableShadows",  
@@ -1866,7 +1854,6 @@ GameTab:Button({
     end  
 })  
 
-
 GameTab:Button({  
     Title = "SetLowGraphics",  
     Description = "Sets the rendering quality to low",  
@@ -1874,7 +1861,6 @@ GameTab:Button({
         settings().Rendering.QualityLevel = 1  
     end  
 })  
-
 
 GameTab:Button({  
     Title = "DisableParticles",  
@@ -1887,7 +1873,6 @@ GameTab:Button({
         end  
     end  
 })  
-
 
 GameTab:Button({  
     Title = "Night",  
@@ -1905,7 +1890,6 @@ GameTab:Button({
     end  
 })  
 
-
 GameTab:Button({  
     Title = "AntiFog",  
     Description = "Removes fog for better visibility",  
@@ -1915,7 +1899,6 @@ GameTab:Button({
         L.FogEnd = 1e6  
     end  
 })  
-
 
 GameTab:Button({  
     Title = "LowPolyMode",  
@@ -1929,7 +1912,6 @@ GameTab:Button({
         end  
     end  
 })  
-
 
 GameTab:Button({  
     Title = "DisableSimplifyLighting",  
@@ -1951,7 +1933,6 @@ GameTab:Button({
         workspace.StreamingTargetRadius = 500  
     end  
 })  
-
 
 GameTab:Button({  
     Title = "ReduceAntiAliasing",  
@@ -2090,8 +2071,7 @@ VisualTab:Toggle({
 local cosmetic1, cosmetic2 = ""  
 VisualTab:Space()  
 VisualTab:Divider()  
-  
-  
+
 VisualTab:Input({  
 Title = "Cosmetic 1",  
 Placeholder = "Enter Current Cosmetic",  
@@ -2394,7 +2374,6 @@ local EmoteRemote = CharacterFolder:WaitForChild("Emote",10)
 local PassCharacterInfo = CharacterFolder:WaitForChild("PassCharacterInfo",10)
 local remoteSignal = PassCharacterInfo and PassCharacterInfo.OnClientEvent
 
-
 local currentTag = nil
 local currentEmotes = table.create(12,"")
 local selectEmotes = table.create(12,"")
@@ -2457,7 +2436,6 @@ local function fireSelect(slot)
     end
 end
 
-
 local oldNamecall
 oldNamecall = hookmetamethod(game,"__namecall",function(self,...)
     local method = getnamecallmethod()
@@ -2499,7 +2477,6 @@ if workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
     end)
 end
 
-
 for i=1,12 do
     VisualTab:Input({
         Title="Current Emote "..i,
@@ -2514,6 +2491,7 @@ for i=1,12 do
             if best then currentEmotes[i]=best end
         end
     })
+
     VisualTab:Input({
         Title="Select Emote "..i,
         Placeholder="Enter select emote name",
@@ -2527,6 +2505,7 @@ for i=1,12 do
             if best then selectEmotes[i]=best end
         end
     })
+
     VisualTab:Button({
         Title="Apply Slot "..i,
         Icon="refresh-cw",
