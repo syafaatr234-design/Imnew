@@ -1,10 +1,16 @@
--- made with chatgpt
+local WindUILoadSuccess, WindUILoadResult = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua", true))()
+end)
 
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+if not WindUILoadSuccess or not WindUILoadResult then
+    warn("[ERROR] Gagal memuat WindUI:", WindUILoadResult)
+    return
+end
+
+getgenv().WindUI = WindUILoadResult
+getgenv().WindUI:SetTheme("Midnight")
 
 local Confirmed = false
-
-WindUI:SetTheme("Midnight")
 
 function gradient(text, startColor, endColor)
     local result = ""
@@ -23,7 +29,7 @@ function gradient(text, startColor, endColor)
     return result
 end
 
-WindUI:Popup({
+getgenv().WindUI:Popup({
     Title = "Execute",
     Icon = "console",
     IconThemed = true,
@@ -54,8 +60,15 @@ if not workspace:FindFirstChild("SecurityPart") then
     SecurityPart.Parent = workspace
 end
 
-local moneyFarmEnabled = false
-local ticketFarmEnabled = false
+getgenv().VoltexUI = {
+    FeatureStates = {},
+    Connections = {},
+    Threads = {},
+    Objects = {},
+    Toggles = {},
+    CleanupFunctions = {},
+    ActiveToggles = {}
+}
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -66,7 +79,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
 
-local FeatureStates = {
+getgenv().VoltexUI.FeatureStates = {
     SelfReviveMethod = "Spawnpoint",
     AutoSelfRevive = false,
     TimerDisplay = false,
@@ -78,7 +91,7 @@ local FeatureStates = {
     AutoCarry = false,
     BhopEnabled = false,
     BhopMode = "Acceleration",
-    BhopAccelValue = -0,
+    BhopAccelValue = 0,
     SelectedEmote = nil,
     EmoteEnabled = false,
     LagSwitchEnabled = false,
@@ -94,10 +107,16 @@ local FeatureStates = {
     AutoTicketFarm = false,
     AutoMoneyFarm = false,
     HighlightPlayers = false,
-    AntiAFK = false, -- Tambahkan Anti AFK di FeatureStates
+    AntiAFK = false,
 }
 
-local Window = WindUI:CreateWindow({
+local FeatureStates = getgenv().VoltexUI.FeatureStates
+local Connections = getgenv().VoltexUI.Connections
+local Threads = getgenv().VoltexUI.Threads
+local Objects = getgenv().VoltexUI.Objects
+local Toggles = getgenv().VoltexUI.Toggles
+
+local Window = getgenv().WindUI:CreateWindow({
     Title = "VoltexUI",
     Icon = "rbxassetid://116526525421905",
     Author = "By Jay",
@@ -121,13 +140,13 @@ local EmoteRemote = CharacterFolder and CharacterFolder:WaitForChild("Emote", 10
 local PassCharacterInfo = CharacterFolder and CharacterFolder:WaitForChild("PassCharacterInfo", 10)
 
 local remoteSignal = PassCharacterInfo and PassCharacterInfo.OnClientEvent
-local currentTag = nil
-local currentEmotes = table.create(12, "")
-local selectEmotes = table.create(12, "")
-local emoteEnabled = table.create(12, false)
+getgenv().VoltexUI.currentTag = nil
+getgenv().VoltexUI.currentEmotes = table.create(12, "")
+getgenv().VoltexUI.selectEmotes = table.create(12, "")
+getgenv().VoltexUI.emoteEnabled = table.create(12, false)
 
-local currentEmoteInputs = {}
-local selectEmoteInputs = {}
+getgenv().VoltexUI.currentEmoteInputs = {}
+getgenv().VoltexUI.selectEmoteInputs = {}
 
 local function readTagFromFolder(f)
     if not f then return nil end
@@ -143,8 +162,8 @@ local function readTagFromFolder(f)
 end
 
 local function onRespawn()
-    currentTag = nil
-    pendingSlot = nil
+    getgenv().VoltexUI.currentTag = nil
+    getgenv().VoltexUI.pendingSlot = nil
     
     task.spawn(function()
         local startTime = tick()
@@ -153,13 +172,13 @@ local function onRespawn()
             if workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players") then
                 local pf = workspace.Game.Players:FindFirstChild(player.Name)
                 if pf then
-                    currentTag = readTagFromFolder(pf)
-                    if currentTag then
-                        local b = tonumber(currentTag)
+                    getgenv().VoltexUI.currentTag = readTagFromFolder(pf)
+                    if getgenv().VoltexUI.currentTag then
+                        local b = tonumber(getgenv().VoltexUI.currentTag)
                         if b and b >= 0 and b <= 255 then
                             break
                         else
-                            currentTag = nil
+                            getgenv().VoltexUI.currentTag = nil
                         end
                     end
                 end
@@ -169,30 +188,30 @@ local function onRespawn()
     end)
 end
 
-local pendingSlot = nil
-local blockOriginalEmote = false
+getgenv().VoltexUI.pendingSlot = nil
+getgenv().VoltexUI.blockOriginalEmote = false
 
 local function fireSelect(slot)
-    if not currentTag then return end
+    if not getgenv().VoltexUI.currentTag then return end
     
-    local b = tonumber(currentTag)
+    local b = tonumber(getgenv().VoltexUI.currentTag)
     if not b or b < 0 or b > 255 then return end
-    if not selectEmotes[slot] or selectEmotes[slot] == "" then return end
+    if not getgenv().VoltexUI.selectEmotes[slot] or getgenv().VoltexUI.selectEmotes[slot] == "" then return end
     
     local buf = buffer.create(2)
     buffer.writeu8(buf, 0, b)
     buffer.writeu8(buf, 1, 17)
     
     if remoteSignal then
-        firesignal(remoteSignal, buf, {selectEmotes[slot]})
+        firesignal(remoteSignal, buf, {getgenv().VoltexUI.selectEmotes[slot]})
     end
 end
 
 if PassCharacterInfo and EmoteRemote then
     PassCharacterInfo.OnClientEvent:Connect(function(...)
-        if not pendingSlot then return end
-        local slot = pendingSlot
-        pendingSlot = nil
+        if not getgenv().VoltexUI.pendingSlot then return end
+        local slot = getgenv().VoltexUI.pendingSlot
+        getgenv().VoltexUI.pendingSlot = nil
         task.wait(0.1)
         fireSelect(slot)
     end)
@@ -204,20 +223,20 @@ if PassCharacterInfo and EmoteRemote then
         
         if m == "FireServer" and self == EmoteRemote and type(a[1]) == "string" then
             for i = 1, 12 do
-                if emoteEnabled[i] and currentEmotes[i] ~= "" and a[1] == currentEmotes[i] then
-                    pendingSlot = i
-                    blockOriginalEmote = true
+                if getgenv().VoltexUI.emoteEnabled[i] and getgenv().VoltexUI.currentEmotes[i] ~= "" and a[1] == getgenv().VoltexUI.currentEmotes[i] then
+                    getgenv().VoltexUI.pendingSlot = i
+                    getgenv().VoltexUI.blockOriginalEmote = true
                     
                     task.spawn(function()
                         task.wait(0.1)
-                        blockOriginalEmote = false
-                        if pendingSlot == i then
-                            pendingSlot = nil
+                        getgenv().VoltexUI.blockOriginalEmote = false
+                        if getgenv().VoltexUI.pendingSlot == i then
+                            getgenv().VoltexUI.pendingSlot = nil
                             fireSelect(i)
                         end
                     end)
                     
-                    if blockOriginalEmote then
+                    if getgenv().VoltexUI.blockOriginalEmote then
                         return nil
                     end
                 end
@@ -246,14 +265,12 @@ if PassCharacterInfo and EmoteRemote then
         
         workspace.Game.Players.ChildRemoved:Connect(function(child)
             if child.Name == player.Name then
-                currentTag = nil
-                pendingSlot = nil
+                getgenv().VoltexUI.currentTag = nil
+                getgenv().VoltexUI.pendingSlot = nil
             end
         end)
     end
 end
-
-local featureToggles = {}
 
 local ToggleStyles = {
     Bhop = { Accent = Color3.fromRGB(80, 170, 255) },
@@ -269,6 +286,7 @@ local function createFeatureToggle(name, initialState, yPosition, toggleCallback
     local accent = style.Accent or Color3.fromRGB(120, 110, 255)
 
     local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = name .. "ToggleGUI"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = PlayerGui
 
@@ -333,21 +351,24 @@ local function createFeatureToggle(name, initialState, yPosition, toggleCallback
         end
     end)
 
-    return {
+    local toggleObj = {
         Gui = screenGui,
         UpdateState = update
     }
+    
+    getgenv().VoltexUI.Toggles[name] = toggleObj
+    getgenv().VoltexUI.ActiveToggles[name] = initialState
+    return toggleObj
 end
 
--- ================================
--- FRONT JUMP SYSTEM
--- ================================
-local frontJumpVelocity = nil
+getgenv().VoltexUI.frontJumpVelocity = nil
 
 local function startFrontJump()
-    if frontJumpVelocity then 
-        frontJumpVelocity:Destroy() 
-        frontJumpVelocity = nil 
+    if getgenv().VoltexUI.frontJumpVelocity then 
+        pcall(function()
+            getgenv().VoltexUI.frontJumpVelocity:Destroy()
+        end)
+        getgenv().VoltexUI.frontJumpVelocity = nil 
     end
     
     local char = LocalPlayer.Character
@@ -359,74 +380,83 @@ local function startFrontJump()
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    frontJumpVelocity = Instance.new("BodyVelocity")
-    frontJumpVelocity.MaxForce = Vector3.new(400000, 0, 400000)
-    frontJumpVelocity.P = 1250
-    frontJumpVelocity.Velocity = Vector3.new(0, 0, 0)
-    frontJumpVelocity.Parent = root
+    getgenv().VoltexUI.frontJumpVelocity = Instance.new("BodyVelocity")
+    getgenv().VoltexUI.frontJumpVelocity.MaxForce = Vector3.new(400000, 0, 400000)
+    getgenv().VoltexUI.frontJumpVelocity.P = 1250
+    getgenv().VoltexUI.frontJumpVelocity.Velocity = Vector3.new(0, 0, 0)
+    getgenv().VoltexUI.frontJumpVelocity.Parent = root
 
-    task.spawn(function()
-        while FeatureStates.FrontJumpEnabled and frontJumpVelocity and frontJumpVelocity.Parent do
-            local cam = workspace.CurrentCamera
-            if cam and root then
-                local forward = cam.CFrame.LookVector
-                local direction = Vector3.new(forward.X, 0, forward.Z)
-                if direction.Magnitude > 0 then 
-                    direction = direction.Unit 
-                end
-                
-                local targetVelocity = direction * FeatureStates.FrontJumpSpeed
-                frontJumpVelocity.Velocity = targetVelocity
-                
-                if FeatureStates.FrontAutoJumpEnabled and humanoid and humanoid:GetState() ~= Enum.HumanoidStateType.Jumping then
-                    local rayOrigin = root.Position
-                    local rayDir = Vector3.new(0, -4, 0)
-                    local ray = Ray.new(rayOrigin, rayDir)
-                    local hit, pos = workspace:FindPartOnRayWithIgnoreList(ray, {char})
-                    
-                    if hit then 
-                        humanoid:ChangeState(Enum.HumanoidStateType.Jumping) 
-                    end
-                end
+    local frontJumpConnection
+    frontJumpConnection = RunService.Heartbeat:Connect(function()
+        if not getgenv().VoltexUI.FeatureStates.FrontJumpEnabled or 
+           not getgenv().VoltexUI.frontJumpVelocity or 
+           not getgenv().VoltexUI.frontJumpVelocity.Parent then
+            if frontJumpConnection then
+                frontJumpConnection:Disconnect()
             end
-            task.wait(0.016)
+            return
         end
         
-        if frontJumpVelocity then 
-            frontJumpVelocity:Destroy() 
-            frontJumpVelocity = nil 
+        local cam = workspace.CurrentCamera
+        if cam and root then
+            local forward = cam.CFrame.LookVector
+            local direction = Vector3.new(forward.X, 0, forward.Z)
+            if direction.Magnitude > 0 then 
+                direction = direction.Unit 
+            end
+            
+            local targetVelocity = direction * getgenv().VoltexUI.FeatureStates.FrontJumpSpeed
+            getgenv().VoltexUI.frontJumpVelocity.Velocity = targetVelocity
+            
+            if getgenv().VoltexUI.FeatureStates.FrontAutoJumpEnabled and humanoid and humanoid:GetState() ~= Enum.HumanoidStateType.Jumping then
+                local rayOrigin = root.Position
+                local rayDir = Vector3.new(0, -4, 0)
+                local ray = Ray.new(rayOrigin, rayDir)
+                local hit, pos = workspace:FindPartOnRayWithIgnoreList(ray, {char})
+                
+                if hit then 
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping) 
+                end
+            end
         end
     end)
+    
+    getgenv().VoltexUI.Connections["FrontJump"] = frontJumpConnection
 end
 
 local function handleFrontJumpToggle(newState)
-    FeatureStates.FrontJumpEnabled = newState
+    getgenv().VoltexUI.FeatureStates.FrontJumpEnabled = newState
     
     if newState then
         startFrontJump()
     else
-        if frontJumpVelocity then
-            frontJumpVelocity:Destroy()
-            frontJumpVelocity = nil
+        if getgenv().VoltexUI.frontJumpVelocity then
+            pcall(function()
+                getgenv().VoltexUI.frontJumpVelocity:Destroy()
+            end)
+            getgenv().VoltexUI.frontJumpVelocity = nil
+        end
+        if getgenv().VoltexUI.Connections["FrontJump"] then
+            getgenv().VoltexUI.Connections["FrontJump"]:Disconnect()
+            getgenv().VoltexUI.Connections["FrontJump"] = nil
         end
     end
 end
 
--- Add Front Jump to PlayerTab
 PlayerTab:Toggle({
     Title = "Front Jump",
     Value = false,
     Callback = function(state)
         handleFrontJumpToggle(state)
-        if state and not featureToggles["Front Jump"] then
-            featureToggles["Front Jump"] = createFeatureToggle("Front Jump", state, 0.1, function(newState)
+        if state and not getgenv().VoltexUI.Toggles["Front Jump"] then
+            getgenv().VoltexUI.Toggles["Front Jump"] = createFeatureToggle("Front Jump", state, 0.1, function(newState)
                 handleFrontJumpToggle(newState)
             end)
         end
-        if featureToggles["Front Jump"] then
-            featureToggles["Front Jump"].Gui.Enabled = state
-            if featureToggles["Front Jump"].UpdateState then
-                featureToggles["Front Jump"].UpdateState(state)
+        if getgenv().VoltexUI.Toggles["Front Jump"] then
+            getgenv().VoltexUI.Toggles["Front Jump"].Gui.Enabled = state
+            if getgenv().VoltexUI.Toggles["Front Jump"].UpdateState then
+                getgenv().VoltexUI.Toggles["Front Jump"].UpdateState(state)
             end
         end
     end
@@ -440,7 +470,7 @@ PlayerTab:Input({
     Callback = function(input)
         local val = tonumber(input)
         if val and val > 0 and val <= 500 then
-            FeatureStates.FrontJumpSpeed = val
+            getgenv().VoltexUI.FeatureStates.FrontJumpSpeed = val
         end
     end
 })
@@ -449,33 +479,33 @@ PlayerTab:Toggle({
     Title = "Auto Jump with Front Jump",
     Value = true,
     Callback = function(state)
-        FeatureStates.FrontAutoJumpEnabled = state
+        getgenv().VoltexUI.FeatureStates.FrontAutoJumpEnabled = state
     end
 })
 
 PlayerTab:Divider()
 
-local lastSavedPosition = nil
-local respawnConnection = nil
-local AutoSelfReviveConnection = nil
-local hasRevived = false
+getgenv().VoltexUI.lastSavedPosition = nil
+getgenv().VoltexUI.respawnConnection = nil
+getgenv().VoltexUI.AutoSelfReviveConnection = nil
+getgenv().VoltexUI.hasRevived = false
 
 local function reviveAtSpawnpoint()
-    if not hasRevived then
-        hasRevived = true
+    if not getgenv().VoltexUI.hasRevived then
+        getgenv().VoltexUI.hasRevived = true
         task.wait(3)
         pcall(function()
             ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
         end)
         task.delay(10, function()
-            hasRevived = false
+            getgenv().VoltexUI.hasRevived = false
         end)
     end
 end
 
 local function reviveAtPosition(character, hrp)
     if hrp then
-        lastSavedPosition = hrp.Position
+        getgenv().VoltexUI.lastSavedPosition = hrp.Position
     end
     task.wait(3)
     
@@ -496,12 +526,12 @@ local function reviveAtPosition(character, hrp)
     end
     
     local newHRP = newCharacter and newCharacter:FindFirstChild("HumanoidRootPart")
-    if lastSavedPosition and newHRP then
-        newHRP.CFrame = CFrame.new(lastSavedPosition)
+    if getgenv().VoltexUI.lastSavedPosition and newHRP then
+        newHRP.CFrame = CFrame.new(getgenv().VoltexUI.lastSavedPosition)
         task.wait(0.1)
-        local movedDistance = (newHRP.Position - lastSavedPosition).Magnitude
+        local movedDistance = (newHRP.Position - getgenv().VoltexUI.lastSavedPosition).Magnitude
         if movedDistance > 5 then
-            lastSavedPosition = nil
+            getgenv().VoltexUI.lastSavedPosition = nil
         end
     end
 end
@@ -510,36 +540,36 @@ PlayerTab:Toggle({
     Title = "Auto Self Revive",
     Value = false,
     Callback = function(state)
-        FeatureStates.AutoSelfRevive = state
+        getgenv().VoltexUI.FeatureStates.AutoSelfRevive = state
         
-        if AutoSelfReviveConnection then
-            AutoSelfReviveConnection:Disconnect()
-            AutoSelfReviveConnection = nil
+        if getgenv().VoltexUI.AutoSelfReviveConnection then
+            getgenv().VoltexUI.AutoSelfReviveConnection:Disconnect()
+            getgenv().VoltexUI.AutoSelfReviveConnection = nil
         end
         
-        if respawnConnection then
-            respawnConnection:Disconnect()
-            respawnConnection = nil
+        if getgenv().VoltexUI.respawnConnection then
+            getgenv().VoltexUI.respawnConnection:Disconnect()
+            getgenv().VoltexUI.respawnConnection = nil
         end
         
         if not state then
-            hasRevived = false
-            lastSavedPosition = nil
+            getgenv().VoltexUI.hasRevived = false
+            getgenv().VoltexUI.lastSavedPosition = nil
             return
         end
         
         local function setupReviveLogic(character)
             if not character then return end
             
-            AutoSelfReviveConnection = character:GetAttributeChangedSignal("Downed"):Connect(function()
-                if not FeatureStates.AutoSelfRevive then return end
+            getgenv().VoltexUI.AutoSelfReviveConnection = character:GetAttributeChangedSignal("Downed"):Connect(function()
+                if not getgenv().VoltexUI.FeatureStates.AutoSelfRevive then return end
                 
                 local isDowned = character:GetAttribute("Downed")
                 if isDowned then
                     local hrp = character:FindFirstChild("HumanoidRootPart")
-                    if FeatureStates.SelfReviveMethod == "Spawnpoint" then
+                    if getgenv().VoltexUI.FeatureStates.SelfReviveMethod == "Spawnpoint" then
                         reviveAtSpawnpoint()
-                    elseif FeatureStates.SelfReviveMethod == "Fake Revive" then
+                    elseif getgenv().VoltexUI.FeatureStates.SelfReviveMethod == "Fake Revive" then
                         reviveAtPosition(character, hrp)
                     end
                 end
@@ -551,7 +581,7 @@ PlayerTab:Toggle({
             setupReviveLogic(currentChar)
         end
         
-        respawnConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
+        getgenv().VoltexUI.respawnConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
             task.wait(1)
             setupReviveLogic(newChar)
         end)
@@ -563,24 +593,11 @@ PlayerTab:Dropdown({
     Values = {"Spawnpoint", "Fake Revive"},
     Value = "Spawnpoint",
     Callback = function(value)
-        FeatureStates.SelfReviveMethod = value
+        getgenv().VoltexUI.FeatureStates.SelfReviveMethod = value
     end
 })
 
 PlayerTab:Divider()
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    applyToTables()
-end)
-
-task.spawn(function()
-    task.wait(2)
-    applyToTables()
-end)
 
 local function getMovementTables()
     local requiredFields = {
@@ -607,7 +624,7 @@ local function getMovementTables()
     return matched
 end
 
-local SavedMovement = {
+getgenv().VoltexUI.SavedMovement = {
     Speed = 1500,
     JumpCap = 1,
     AirStrafeAcceleration = 187
@@ -619,9 +636,9 @@ local function applyToTables()
 
     for _, t in ipairs(targets) do
         pcall(function()
-            t.Speed = SavedMovement.Speed
-            t.JumpCap = SavedMovement.JumpCap
-            t.AirStrafeAcceleration = SavedMovement.AirStrafeAcceleration
+            t.Speed = getgenv().VoltexUI.SavedMovement.Speed
+            t.JumpCap = getgenv().VoltexUI.SavedMovement.JumpCap
+            t.AirStrafeAcceleration = getgenv().VoltexUI.SavedMovement.AirStrafeAcceleration
         end)
     end
 end
@@ -640,7 +657,7 @@ PlayerTab:Input({
         local val = tonumber(input)
         if not val or val < 1450 or val > 100008888 then return end
 
-        SavedMovement.Speed = val
+        getgenv().VoltexUI.SavedMovement.Speed = val
         applyToTables()
     end
 })
@@ -654,7 +671,7 @@ PlayerTab:Input({
         local val = tonumber(input)
         if not val or val < 0.1 or val > 5088888 then return end
 
-        SavedMovement.JumpCap = val
+        getgenv().VoltexUI.SavedMovement.JumpCap = val
         applyToTables()
     end
 })
@@ -668,7 +685,7 @@ PlayerTab:Input({
         local val = tonumber(input)
         if not val or val < 1 or val > 1000888888 then return end
 
-        SavedMovement.AirStrafeAcceleration = val
+        getgenv().VoltexUI.SavedMovement.AirStrafeAcceleration = val
         applyToTables()
     end
 })
@@ -683,10 +700,10 @@ PlayerTab:Button({
 
 PlayerTab:Divider()
 
-local slideFrictionValue = -8
-local movementTables = {}
-local infiniteSlideHeartbeat = nil
-local infiniteSlideCharacterConn = nil
+getgenv().VoltexUI.slideFrictionValue = -8
+getgenv().VoltexUI.movementTables = {}
+getgenv().VoltexUI.infiniteSlideHeartbeat = nil
+getgenv().VoltexUI.infiniteSlideCharacterConn = nil
 
 local requiredKeys = {
     "Friction","AirStrafeAcceleration","JumpHeight","RunDeaccel",
@@ -703,17 +720,17 @@ local function hasRequiredFields(tbl)
 end
 
 local function findMovementTables()
-    movementTables = {}
+    getgenv().VoltexUI.movementTables = {}
     for _, obj in ipairs(getgc(true)) do
         if hasRequiredFields(obj) then
-            table.insert(movementTables, obj)
+            table.insert(getgenv().VoltexUI.movementTables, obj)
         end
     end
-    return #movementTables > 0
+    return #getgenv().VoltexUI.movementTables > 0
 end
 
 local function setSlideFriction(value)
-    for _, tbl in ipairs(movementTables) do
+    for _, tbl in ipairs(getgenv().VoltexUI.movementTables) do
         pcall(function()
             tbl.Friction = value
         end)
@@ -731,21 +748,21 @@ local function getPlayerModel()
 end
 
 local function infiniteSlideHeartbeatFunc()
-    if not FeatureStates.InfiniteSlide then return end
+    if not getgenv().VoltexUI.FeatureStates.InfiniteSlide then return end
     
     local playerModel = getPlayerModel()
     if not playerModel then return end
     
     local state = playerModel:GetAttribute("State")
     if state == "Slide" or state == "EmotingSlide" then
-        setSlideFriction(slideFrictionValue)
+        setSlideFriction(getgenv().VoltexUI.slideFrictionValue)
     else
         setSlideFriction(5)
     end
 end
 
 local function onCharacterAddedSlide()
-    if not FeatureStates.InfiniteSlide then return end
+    if not getgenv().VoltexUI.FeatureStates.InfiniteSlide then return end
     
     for i = 1, 10 do
         task.wait(0.5)
@@ -756,36 +773,37 @@ local function onCharacterAddedSlide()
 end
 
 local function setInfiniteSlide(enabled)
-    FeatureStates.InfiniteSlide = enabled
+    getgenv().VoltexUI.FeatureStates.InfiniteSlide = enabled
     
     if enabled then
         findMovementTables()
         
-        if not infiniteSlideCharacterConn then
-            infiniteSlideCharacterConn = LocalPlayer.CharacterAdded:Connect(onCharacterAddedSlide)
+        if not getgenv().VoltexUI.infiniteSlideCharacterConn then
+            getgenv().VoltexUI.infiniteSlideCharacterConn = LocalPlayer.CharacterAdded:Connect(onCharacterAddedSlide)
         end
         
         if LocalPlayer.Character then
             task.spawn(onCharacterAddedSlide)
         end
         
-        if infiniteSlideHeartbeat then
-            infiniteSlideHeartbeat:Disconnect()
+        if getgenv().VoltexUI.infiniteSlideHeartbeat then
+            getgenv().VoltexUI.infiniteSlideHeartbeat:Disconnect()
         end
-        infiniteSlideHeartbeat = RunService.Heartbeat:Connect(infiniteSlideHeartbeatFunc)
+        getgenv().VoltexUI.infiniteSlideHeartbeat = RunService.Heartbeat:Connect(infiniteSlideHeartbeatFunc)
+        getgenv().VoltexUI.Connections["InfiniteSlide"] = getgenv().VoltexUI.infiniteSlideHeartbeat
     else
-        if infiniteSlideHeartbeat then
-            infiniteSlideHeartbeat:Disconnect()
-            infiniteSlideHeartbeat = nil
+        if getgenv().VoltexUI.infiniteSlideHeartbeat then
+            getgenv().VoltexUI.infiniteSlideHeartbeat:Disconnect()
+            getgenv().VoltexUI.infiniteSlideHeartbeat = nil
         end
         
-        if infiniteSlideCharacterConn then
-            infiniteSlideCharacterConn:Disconnect()
-            infiniteSlideCharacterConn = nil
+        if getgenv().VoltexUI.infiniteSlideCharacterConn then
+            getgenv().VoltexUI.infiniteSlideCharacterConn:Disconnect()
+            getgenv().VoltexUI.infiniteSlideCharacterConn = nil
         end
         
         setSlideFriction(5)
-        movementTables = {}
+        getgenv().VoltexUI.movementTables = {}
     end
 end
 
@@ -794,15 +812,15 @@ PlayerTab:Toggle({
     Value = false,
     Callback = function(state)
         setInfiniteSlide(state)
-        if state and not featureToggles["Inf Slide"] then
-            featureToggles["Inf Slide"] = createFeatureToggle("Inf Slide", state, 0.25, function(newState)
+        if state and not getgenv().VoltexUI.Toggles["Inf Slide"] then
+            getgenv().VoltexUI.Toggles["Inf Slide"] = createFeatureToggle("Inf Slide", state, 0.25, function(newState)
                 setInfiniteSlide(newState)
             end)
         end
-        if featureToggles["Inf Slide"] then
-            featureToggles["Inf Slide"].Gui.Enabled = state
-            if featureToggles["Inf Slide"].UpdateState then
-                featureToggles["Inf Slide"].UpdateState(state)
+        if getgenv().VoltexUI.Toggles["Inf Slide"] then
+            getgenv().VoltexUI.Toggles["Inf Slide"].Gui.Enabled = state
+            if getgenv().VoltexUI.Toggles["Inf Slide"].UpdateState then
+                getgenv().VoltexUI.Toggles["Inf Slide"].UpdateState(state)
             end
         end
     end
@@ -817,9 +835,9 @@ PlayerTab:Input({
     Callback = function(value)
         local num = tonumber(value)
         if num and num < 0 then
-            slideFrictionValue = num
-            if FeatureStates.InfiniteSlide then
-                setSlideFriction(slideFrictionValue)
+            getgenv().VoltexUI.slideFrictionValue = num
+            if getgenv().VoltexUI.FeatureStates.InfiniteSlide then
+                setSlideFriction(getgenv().VoltexUI.slideFrictionValue)
             end
         end
     end
@@ -827,24 +845,24 @@ PlayerTab:Input({
 
 PlayerTab:Divider()
 
-local autoJumpType = "Bounce"
-local bhopHoldActive = false
-local jumpCooldown = 0.2
+getgenv().VoltexUI.autoJumpType = "Bounce"
+getgenv().VoltexUI.bhopHoldActive = false
+getgenv().VoltexUI.jumpCooldown = 0.2
 
-local Character = nil
-local Humanoid = nil
-local HumanoidRootPart = nil
-local LastJump = 0
+getgenv().VoltexUI.Character = nil
+getgenv().VoltexUI.Humanoid = nil
+getgenv().VoltexUI.HumanoidRootPart = nil
+getgenv().VoltexUI.LastJump = 0
 
-local GROUND_CHECK_DISTANCE = 4
-local MAX_SLOPE_ANGLE = 45
+getgenv().VoltexUI.GROUND_CHECK_DISTANCE = 4
+getgenv().VoltexUI.MAX_SLOPE_ANGLE = 45
 
 local function IsOnGround()
-    if not Character or not HumanoidRootPart or not Humanoid then 
+    if not getgenv().VoltexUI.Character or not getgenv().VoltexUI.HumanoidRootPart or not getgenv().VoltexUI.Humanoid then 
         return false 
     end
 
-    local state = Humanoid:GetState()
+    local state = getgenv().VoltexUI.Humanoid:GetState()
     if state == Enum.HumanoidStateType.Jumping or 
        state == Enum.HumanoidStateType.Freefall or
        state == Enum.HumanoidStateType.Swimming then
@@ -853,11 +871,11 @@ local function IsOnGround()
 
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {Character}
+    raycastParams.FilterDescendantsInstances = {getgenv().VoltexUI.Character}
     raycastParams.IgnoreWater = true
 
-    local rayOrigin = HumanoidRootPart.Position
-    local rayDirection = Vector3.new(0, -GROUND_CHECK_DISTANCE, 0)
+    local rayOrigin = getgenv().VoltexUI.HumanoidRootPart.Position
+    local rayDirection = Vector3.new(0, -getgenv().VoltexUI.GROUND_CHECK_DISTANCE, 0)
     local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
 
     if not raycastResult then 
@@ -867,70 +885,71 @@ local function IsOnGround()
     local surfaceNormal = raycastResult.Normal
     local angle = math.deg(math.acos(surfaceNormal:Dot(Vector3.new(0, 1, 0))))
 
-    return angle <= MAX_SLOPE_ANGLE
+    return angle <= getgenv().VoltexUI.MAX_SLOPE_ANGLE
 end
 
 local function updateBhop()
-    local isBhopActive = FeatureStates.BhopEnabled or bhopHoldActive
+    local isBhopActive = getgenv().VoltexUI.FeatureStates.BhopEnabled or getgenv().VoltexUI.bhopHoldActive
 
-    if isBhopActive and Humanoid then
+    if isBhopActive and getgenv().VoltexUI.Humanoid then
         local now = tick()
-        if IsOnGround() and (now - LastJump) > jumpCooldown then
-            if autoJumpType == "Realistic" then
+        if IsOnGround() and (now - getgenv().VoltexUI.LastJump) > getgenv().VoltexUI.jumpCooldown then
+            if getgenv().VoltexUI.autoJumpType == "Realistic" then
                 pcall(function()
                     game:GetService("Players").LocalPlayer.PlayerScripts.Events.temporary_events.JumpReact:Fire()
                     task.wait(0.05)
                     game:GetService("Players").LocalPlayer.PlayerScripts.Events.temporary_events.EndJump:Fire()
                 end)
             else
-                Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                getgenv().VoltexUI.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             end
-            LastJump = now
+            getgenv().VoltexUI.LastJump = now
         end
     end
 end
 
 LocalPlayer.CharacterAdded:Connect(function(character)
-    Character = character
-    Humanoid = character:WaitForChild("Humanoid")
-    HumanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    getgenv().VoltexUI.Character = character
+    getgenv().VoltexUI.Humanoid = character:WaitForChild("Humanoid")
+    getgenv().VoltexUI.HumanoidRootPart = character:WaitForChild("HumanoidRootPart")
 end)
 
 if LocalPlayer.Character then
-    Character = LocalPlayer.Character
-    Humanoid = Character:WaitForChild("Humanoid")
-    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    getgenv().VoltexUI.Character = LocalPlayer.Character
+    getgenv().VoltexUI.Humanoid = getgenv().VoltexUI.Character:WaitForChild("Humanoid")
+    getgenv().VoltexUI.HumanoidRootPart = getgenv().VoltexUI.Character:WaitForChild("HumanoidRootPart")
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
     if gameProcessedEvent then return end
     if input.KeyCode == Enum.KeyCode.Space then
-        bhopHoldActive = true
+        getgenv().VoltexUI.bhopHoldActive = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Space then
-        bhopHoldActive = false
+        getgenv().VoltexUI.bhopHoldActive = false
     end
 end)
 
-local bhopConnection = RunService.Heartbeat:Connect(updateBhop)
+getgenv().VoltexUI.bhopConnection = RunService.Heartbeat:Connect(updateBhop)
+getgenv().VoltexUI.Connections["Bhop"] = getgenv().VoltexUI.bhopConnection
 
 PlayerTab:Toggle({
     Title = "Bhop",
     Value = false,
     Callback = function(state)
-        FeatureStates.BhopEnabled = state
-        if state and not featureToggles["Bhop"] then
-            featureToggles["Bhop"] = createFeatureToggle("Bhop", state, 0.3, function(newState)
-                FeatureStates.BhopEnabled = newState
+        getgenv().VoltexUI.FeatureStates.BhopEnabled = state
+        if state and not getgenv().VoltexUI.Toggles["Bhop"] then
+            getgenv().VoltexUI.Toggles["Bhop"] = createFeatureToggle("Bhop", state, 0.3, function(newState)
+                getgenv().VoltexUI.FeatureStates.BhopEnabled = newState
             end)
         end
-        if featureToggles["Bhop"] then
-            featureToggles["Bhop"].Gui.Enabled = state
-            if featureToggles["Bhop"].UpdateState then
-                featureToggles["Bhop"].UpdateState(state)
+        if getgenv().VoltexUI.Toggles["Bhop"] then
+            getgenv().VoltexUI.Toggles["Bhop"].Gui.Enabled = state
+            if getgenv().VoltexUI.Toggles["Bhop"].UpdateState then
+                getgenv().VoltexUI.Toggles["Bhop"].UpdateState(state)
             end
         end
     end
@@ -942,7 +961,7 @@ PlayerTab:Dropdown({
     Multi = false,
     Default = 1,
     Callback = function(value)
-        FeatureStates.BhopMode = value
+        getgenv().VoltexUI.FeatureStates.BhopMode = value
     end
 })
 
@@ -952,32 +971,32 @@ PlayerTab:Input({
     Numeric = true,
     Callback = function(value)
         if value and tostring(value):sub(1, 1) == "-" then
-            FeatureStates.BhopAccelValue = tonumber(value)
+            getgenv().VoltexUI.FeatureStates.BhopAccelValue = tonumber(value)
         end
     end
 })
 
 PlayerTab:Divider()
 
-local emoteList = {}
+getgenv().VoltexUI.emoteList = {}
 local emotesFolder = ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("Emotes")
 
 if emotesFolder then
     for _, emote in ipairs(emotesFolder:GetChildren()) do
         if emote:IsA("ModuleScript") or emote:IsA("LocalScript") or emote:IsA("Script") then
-            table.insert(emoteList, emote.Name)
+            table.insert(getgenv().VoltexUI.emoteList, emote.Name)
         end
     end
 end
 
-table.sort(emoteList)
+table.sort(getgenv().VoltexUI.emoteList)
 
 PlayerTab:Dropdown({
     Title = "Select Emote",
-    Values = emoteList,
+    Values = getgenv().VoltexUI.emoteList,
     Multi = false,
     Callback = function(option)
-        FeatureStates.SelectedEmote = option
+        getgenv().VoltexUI.FeatureStates.SelectedEmote = option
     end
 })
 
@@ -985,7 +1004,7 @@ PlayerTab:Toggle({
     Title = "Enable Emote (Hold Crouch Button)",
     Default = false,
     Callback = function(state)
-        FeatureStates.EmoteEnabled = state
+        getgenv().VoltexUI.FeatureStates.EmoteEnabled = state
     end
 })
 
@@ -1010,9 +1029,9 @@ task.spawn(function()
             button.MouseButton1Down:Connect(function()
                 holding = true
                 emoteTask = task.delay(0.5, function()
-                    if holding and FeatureStates.EmoteEnabled and FeatureStates.SelectedEmote then
+                    if holding and getgenv().VoltexUI.FeatureStates.EmoteEnabled and getgenv().VoltexUI.FeatureStates.SelectedEmote then
                         pcall(function()
-                            ReplicatedStorage.Events.Character.Emote:FireServer(FeatureStates.SelectedEmote)
+                            ReplicatedStorage.Events.Character.Emote:FireServer(getgenv().VoltexUI.FeatureStates.SelectedEmote)
                         end)
                     end
                 end)
@@ -1037,7 +1056,7 @@ PlayerTab:Divider()
 local function triggerLagSwitch()
     task.spawn(function()
         local start = tick()
-        while tick() - start < FeatureStates.LagDuration do
+        while tick() - start < getgenv().VoltexUI.FeatureStates.LagDuration do
             for i = 1, 10000 do
                 math.random(1, 1000000)
             end
@@ -1050,19 +1069,19 @@ PlayerTab:Toggle({
     Icon = "zap",
     Default = false,
     Callback = function(state)
-        FeatureStates.LagSwitchEnabled = state
-        if state and not featureToggles["Lag Switch"] then
-            featureToggles["Lag Switch"] = createFeatureToggle("Lag Switch", state, 0.35, function(newState)
-                FeatureStates.LagSwitchEnabled = newState
+        getgenv().VoltexUI.FeatureStates.LagSwitchEnabled = state
+        if state and not getgenv().VoltexUI.Toggles["Lag Switch"] then
+            getgenv().VoltexUI.Toggles["Lag Switch"] = createFeatureToggle("Lag Switch", state, 0.35, function(newState)
+                getgenv().VoltexUI.FeatureStates.LagSwitchEnabled = newState
                 if newState then
                     triggerLagSwitch()
                 end
             end)
         end
-        if featureToggles["Lag Switch"] then
-            featureToggles["Lag Switch"].Gui.Enabled = state
-            if featureToggles["Lag Switch"].UpdateState then
-                featureToggles["Lag Switch"].UpdateState(state)
+        if getgenv().VoltexUI.Toggles["Lag Switch"] then
+            getgenv().VoltexUI.Toggles["Lag Switch"].Gui.Enabled = state
+            if getgenv().VoltexUI.Toggles["Lag Switch"].UpdateState then
+                getgenv().VoltexUI.Toggles["Lag Switch"].UpdateState(state)
             end
         end
         if state then
@@ -1073,78 +1092,25 @@ PlayerTab:Toggle({
 
 PlayerTab:Input({
     Title = "Lag Duration (seconds)",
-    Default = tostring(FeatureStates.LagDuration),
+    Default = tostring(getgenv().VoltexUI.FeatureStates.LagDuration),
     Placeholder = "Enter seconds",
     NumbersOnly = true,
     Callback = function(text)
         local n = tonumber(text)
         if n and n > 0 and n <= 10 then
-            FeatureStates.LagDuration = n
+            getgenv().VoltexUI.FeatureStates.LagDuration = n
         end
     end
 })
 
--- ================================
--- ANTI AFK SYSTEM
--- ================================
-local AntiAFKConnection
-
-local function startAntiAFK()
-    if AntiAFKConnection then 
-        AntiAFKConnection:Disconnect()
-        AntiAFKConnection = nil
-    end
-    
-    AntiAFKConnection = LocalPlayer.Idled:Connect(function()
-        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(0.5)
-        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    end)
-    
-    WindUI:Notify({
-        Title = "Anti AFK",
-        Content = "Anti AFK system activated",
-        Duration = 3
-    })
-end
-
-local function stopAntiAFK()
-    if AntiAFKConnection then
-        AntiAFKConnection:Disconnect()
-        AntiAFKConnection = nil
-        
-        WindUI:Notify({
-            Title = "Anti AFK",
-            Content = "Anti AFK system deactivated",
-            Duration = 3
-        })
-    end
-end
-
-PlayerTab:Toggle({
-    Title = "Anti AFK",
-    Desc = "Prevent getting kicked for inactivity",
-    Value = false,
-    Callback = function(state)
-        FeatureStates.AntiAFK = state
-        if state then
-            startAntiAFK()
-        else
-            stopAntiAFK()
-        end
-    end
-})
-
-PlayerTab:Divider()
-
-local AutoCarryConnection = nil
+getgenv().VoltexUI.AutoCarryConnection = nil
 local InteractRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Character"):WaitForChild("Interact", 10)
 
 local function startAutoCarry()
-    if AutoCarryConnection then return end
+    if getgenv().VoltexUI.AutoCarryConnection then return end
     
-    AutoCarryConnection = RunService.Heartbeat:Connect(function()
-        if not FeatureStates.AutoCarry then return end
+    getgenv().VoltexUI.AutoCarryConnection = RunService.Heartbeat:Connect(function()
+        if not getgenv().VoltexUI.FeatureStates.AutoCarry then return end
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp and InteractRemote then
@@ -1162,12 +1128,15 @@ local function startAutoCarry()
             end
         end
     end)
+    
+    getgenv().VoltexUI.Connections["AutoCarry"] = getgenv().VoltexUI.AutoCarryConnection
 end
 
 local function stopAutoCarry()
-    if AutoCarryConnection then
-        AutoCarryConnection:Disconnect()
-        AutoCarryConnection = nil
+    if getgenv().VoltexUI.AutoCarryConnection then
+        getgenv().VoltexUI.AutoCarryConnection:Disconnect()
+        getgenv().VoltexUI.AutoCarryConnection = nil
+        getgenv().VoltexUI.Connections["AutoCarry"] = nil
     end
 end
 
@@ -1175,12 +1144,12 @@ AutoTab:Toggle({
     Title = "Auto Carry",
     Value = false,
     Callback = function(state)
-        FeatureStates.AutoCarry = state
+        getgenv().VoltexUI.FeatureStates.AutoCarry = state
         if state then
             startAutoCarry()
-            if not featureToggles["Auto Carry"] then
-                featureToggles["Auto Carry"] = createFeatureToggle("Auto Carry", state, 0.2, function(newState)
-                    FeatureStates.AutoCarry = newState
+            if not getgenv().VoltexUI.Toggles["Auto Carry"] then
+                getgenv().VoltexUI.Toggles["Auto Carry"] = createFeatureToggle("Auto Carry", state, 0.2, function(newState)
+                    getgenv().VoltexUI.FeatureStates.AutoCarry = newState
                     if newState then
                         startAutoCarry()
                     else
@@ -1192,10 +1161,10 @@ AutoTab:Toggle({
             stopAutoCarry()
         end
         
-        if featureToggles["Auto Carry"] then
-            featureToggles["Auto Carry"].Gui.Enabled = state
-            if featureToggles["Auto Carry"].UpdateState then
-                featureToggles["Auto Carry"].UpdateState(state)
+        if getgenv().VoltexUI.Toggles["Auto Carry"] then
+            getgenv().VoltexUI.Toggles["Auto Carry"].Gui.Enabled = state
+            if getgenv().VoltexUI.Toggles["Auto Carry"].UpdateState then
+                getgenv().VoltexUI.Toggles["Auto Carry"].UpdateState(state)
             end
         end
     end
@@ -1203,9 +1172,9 @@ AutoTab:Toggle({
 
 AutoTab:Divider()
 
-local InstantReviveEnabled = false
-local InstantReviveDelay = 0.15
-local InstantReviveConnection = nil
+getgenv().VoltexUI.InstantReviveEnabled = false
+getgenv().VoltexUI.InstantReviveDelay = 0.15
+getgenv().VoltexUI.InstantReviveConnection = nil
 
 local function isPlayerDowned(player)
     if not player or not player.Character then return false end
@@ -1213,10 +1182,10 @@ local function isPlayerDowned(player)
 end
 
 local function startInstantRevive()
-    if InstantReviveConnection then return end
+    if getgenv().VoltexUI.InstantReviveConnection then return end
     
-    InstantReviveConnection = RunService.Heartbeat:Connect(function()
-        if not InstantReviveEnabled then return end
+    getgenv().VoltexUI.InstantReviveConnection = RunService.Heartbeat:Connect(function()
+        if not getgenv().VoltexUI.InstantReviveEnabled then return end
         
         local character = LocalPlayer.Character
         if not character then return end
@@ -1236,18 +1205,21 @@ local function startInstantRevive()
                         pcall(function()
                             ReplicatedStorage.Events.Character.Interact:FireServer("Revive", true, player.Name)
                         end)
-                        task.wait(InstantReviveDelay)
+                        task.wait(getgenv().VoltexUI.InstantReviveDelay)
                     end
                 end
             end
         end
     end)
+    
+    getgenv().VoltexUI.Connections["InstantRevive"] = getgenv().VoltexUI.InstantReviveConnection
 end
 
 local function stopInstantRevive()
-    if InstantReviveConnection then
-        InstantReviveConnection:Disconnect()
-        InstantReviveConnection = nil
+    if getgenv().VoltexUI.InstantReviveConnection then
+        getgenv().VoltexUI.InstantReviveConnection:Disconnect()
+        getgenv().VoltexUI.InstantReviveConnection = nil
+        getgenv().VoltexUI.Connections["InstantRevive"] = nil
     end
 end
 
@@ -1255,8 +1227,8 @@ AutoTab:Toggle({
     Title = "Instant Revive While Emoting",
     Value = false,
     Callback = function(state)
-        FeatureStates.InstantReviveEnabled = state
-        InstantReviveEnabled = state
+        getgenv().VoltexUI.FeatureStates.InstantReviveEnabled = state
+        getgenv().VoltexUI.InstantReviveEnabled = state
         
         if state then
             startInstantRevive()
@@ -1271,26 +1243,89 @@ AutoTab:Slider({
     Desc = "Delay between revives",
     Value = { Min = 0, Max = 1, Default = 0.15 },
     Callback = function(value)
-        FeatureStates.InstantReviveDelay = value
-        InstantReviveDelay = value
+        getgenv().VoltexUI.FeatureStates.InstantReviveDelay = value
+        getgenv().VoltexUI.InstantReviveDelay = value
     end
 })
 
 AutoTab:Divider()
-local AutoTicketFarmConnection = nil
+
+getgenv().VoltexUI.AntiAFKConnection = nil
+
+local function startAntiAFK()
+    if getgenv().VoltexUI.AntiAFKConnection then 
+        getgenv().VoltexUI.AntiAFKConnection:Disconnect()
+        getgenv().VoltexUI.AntiAFKConnection = nil
+    end
+    
+    local virtualUserSuccess, virtualUser = pcall(function()
+        return game:GetService("VirtualUser")
+    end)
+    
+    if not virtualUserSuccess then
+        warn("[ERROR] VirtualUser tidak tersedia")
+        return
+    end
+    
+    getgenv().VoltexUI.AntiAFKConnection = LocalPlayer.Idled:Connect(function()
+        virtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(0.5)
+        virtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
+    
+    getgenv().VoltexUI.Connections["AntiAFK"] = getgenv().VoltexUI.AntiAFKConnection
+    
+    getgenv().WindUI:Notify({
+        Title = "Anti AFK",
+        Content = "Anti AFK system activated",
+        Duration = 3
+    })
+end
+
+local function stopAntiAFK()
+    if getgenv().VoltexUI.AntiAFKConnection then
+        getgenv().VoltexUI.AntiAFKConnection:Disconnect()
+        getgenv().VoltexUI.AntiAFKConnection = nil
+        getgenv().VoltexUI.Connections["AntiAFK"] = nil
+        
+        getgenv().WindUI:Notify({
+            Title = "Anti AFK",
+            Content = "Anti AFK system deactivated",
+            Duration = 3
+        })
+    end
+end
+
+AutoTab:Toggle({
+    Title = "Anti AFK",
+    Desc = "u cant disconnect",
+    Value = false,
+    Callback = function(state)
+        getgenv().VoltexUI.FeatureStates.AntiAFK = state
+        if state then
+            startAntiAFK()
+        else
+            stopAntiAFK()
+        end
+    end
+})
+
+AutoTab:Divider()
+
+getgenv().VoltexUI.AutoTicketFarmConnection = nil
 
 local function startAutoTicketFarm()
     local securityPart = workspace:FindFirstChild("SecurityPart")
     if not securityPart then
-        print("SecurityPart not found")
+        warn("[ERROR] SecurityPart not found")
         return
     end
     
-    AutoTicketFarmConnection = RunService.Heartbeat:Connect(function()
-        if not FeatureStates.AutoTicketFarm then
-            if AutoTicketFarmConnection then
-                AutoTicketFarmConnection:Disconnect()
-                AutoTicketFarmConnection = nil
+    getgenv().VoltexUI.AutoTicketFarmConnection = RunService.Heartbeat:Connect(function()
+        if not getgenv().VoltexUI.FeatureStates.AutoTicketFarm then
+            if getgenv().VoltexUI.AutoTicketFarmConnection then
+                getgenv().VoltexUI.AutoTicketFarmConnection:Disconnect()
+                getgenv().VoltexUI.AutoTicketFarmConnection = nil
             end
             return
         end
@@ -1303,7 +1338,9 @@ local function startAutoTicketFarm()
         
         if character and humanoidRootPart then
             if character:GetAttribute("Downed") then
-                ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
+                pcall(function()
+                    ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
+                end)
                 humanoidRootPart.CFrame = securityPart.CFrame + Vector3.new(0, 0, 0)
                 return
             end
@@ -1324,12 +1361,15 @@ local function startAutoTicketFarm()
             end
         end
     end)
+    
+    getgenv().VoltexUI.Connections["AutoTicketFarm"] = getgenv().VoltexUI.AutoTicketFarmConnection
 end
 
 local function stopAutoTicketFarm()
-    if AutoTicketFarmConnection then
-        AutoTicketFarmConnection:Disconnect()
-        AutoTicketFarmConnection = nil
+    if getgenv().VoltexUI.AutoTicketFarmConnection then
+        getgenv().VoltexUI.AutoTicketFarmConnection:Disconnect()
+        getgenv().VoltexUI.AutoTicketFarmConnection = nil
+        getgenv().VoltexUI.Connections["AutoTicketFarm"] = nil
     end
     
     local character = LocalPlayer.Character
@@ -1345,7 +1385,7 @@ AutoTab:Toggle({
     Desc = "Auto farm tickets",
     Value = false,
     Callback = function(state)
-        FeatureStates.AutoTicketFarm = state
+        getgenv().VoltexUI.FeatureStates.AutoTicketFarm = state
         if state then
             startAutoTicketFarm()
         else
@@ -1354,13 +1394,12 @@ AutoTab:Toggle({
     end
 })
 
-FeatureStates.AutoMoneyFarm = false
-FeatureStates.AutoMoneyFarmConnection = nil
+getgenv().VoltexUI.AutoMoneyFarmConnection = nil
 
 local function startAutoMoneyFarm()
     local securityPart = workspace:FindFirstChild("SecurityPart")
     if not securityPart then
-        WindUI:Notify({
+        getgenv().WindUI:Notify({
             Title = "Auto Money Farm",
             Content = "SecurityPart not found!",
             Duration = 3
@@ -1368,13 +1407,13 @@ local function startAutoMoneyFarm()
         return
     end
     
-    if FeatureStates.AutoMoneyFarmConnection then
-        FeatureStates.AutoMoneyFarmConnection:Disconnect()
-        FeatureStates.AutoMoneyFarmConnection = nil
+    if getgenv().VoltexUI.AutoMoneyFarmConnection then
+        getgenv().VoltexUI.AutoMoneyFarmConnection:Disconnect()
+        getgenv().VoltexUI.AutoMoneyFarmConnection = nil
     end
     
-    FeatureStates.AutoMoneyFarmConnection = RunService.Heartbeat:Connect(function()
-        if not FeatureStates.AutoMoneyFarm then return end
+    getgenv().VoltexUI.AutoMoneyFarmConnection = RunService.Heartbeat:Connect(function()
+        if not getgenv().VoltexUI.FeatureStates.AutoMoneyFarm then return end
         
         local character = LocalPlayer.Character
         if not character then return end
@@ -1383,7 +1422,9 @@ local function startAutoMoneyFarm()
         if not rootPart then return end
         
         if character:GetAttribute("Downed") then
-            ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
+            pcall(function()
+                ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
+            end)
             task.wait(2)
             return
         end
@@ -1427,12 +1468,15 @@ local function startAutoMoneyFarm()
             end
         end
     end)
+    
+    getgenv().VoltexUI.Connections["AutoMoneyFarm"] = getgenv().VoltexUI.AutoMoneyFarmConnection
 end
 
 local function stopAutoMoneyFarm()
-    if FeatureStates.AutoMoneyFarmConnection then
-        FeatureStates.AutoMoneyFarmConnection:Disconnect()
-        FeatureStates.AutoMoneyFarmConnection = nil
+    if getgenv().VoltexUI.AutoMoneyFarmConnection then
+        getgenv().VoltexUI.AutoMoneyFarmConnection:Disconnect()
+        getgenv().VoltexUI.AutoMoneyFarmConnection = nil
+        getgenv().VoltexUI.Connections["AutoMoneyFarm"] = nil
     end
     
     local character = LocalPlayer.Character
@@ -1449,11 +1493,11 @@ AutoTab:Toggle({
     Desc = "Auto revive players for money",
     Value = false,
     Callback = function(state)
-        FeatureStates.AutoMoneyFarm = state
+        getgenv().VoltexUI.FeatureStates.AutoMoneyFarm = state
         
-        if state and not featureToggles["Auto Money Farm"] then
-            featureToggles["Auto Money Farm"] = createFeatureToggle("Auto Money Farm", state, 0.4, function(newState)
-                FeatureStates.AutoMoneyFarm = newState
+        if state and not getgenv().VoltexUI.Toggles["Auto Money Farm"] then
+            getgenv().VoltexUI.Toggles["Auto Money Farm"] = createFeatureToggle("Auto Money Farm", state, 0.4, function(newState)
+                getgenv().VoltexUI.FeatureStates.AutoMoneyFarm = newState
                 if newState then
                     startAutoMoneyFarm()
                 else
@@ -1462,10 +1506,10 @@ AutoTab:Toggle({
             end)
         end
         
-        if featureToggles["Auto Money Farm"] then
-            featureToggles["Auto Money Farm"].Gui.Enabled = state
-            if featureToggles["Auto Money Farm"].UpdateState then
-                featureToggles["Auto Money Farm"].UpdateState(state)
+        if getgenv().VoltexUI.Toggles["Auto Money Farm"] then
+            getgenv().VoltexUI.Toggles["Auto Money Farm"].Gui.Enabled = state
+            if getgenv().VoltexUI.Toggles["Auto Money Farm"].UpdateState then
+                getgenv().VoltexUI.Toggles["Auto Money Farm"].UpdateState(state)
             end
         end
         
@@ -1486,37 +1530,45 @@ FPSTab:Button({
         local Terrain = workspace:FindFirstChildOfClass("Terrain")
         local Players = game:GetService("Players")
 
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 1e10
-        Lighting.Brightness = 1
+        pcall(function()
+            Lighting.GlobalShadows = false
+            Lighting.FogEnd = 1e10
+            Lighting.Brightness = 1
+        end)
 
         if Terrain then
-            Terrain.WaterWaveSize = 0
-            Terrain.WaterWaveSpeed = 0
-            Terrain.WaterReflectance = 0
-            Terrain.WaterTransparency = 1
+            pcall(function()
+                Terrain.WaterWaveSize = 0
+                Terrain.WaterWaveSpeed = 0
+                Terrain.WaterReflectance = 0
+                Terrain.WaterTransparency = 1
+            end)
         end
 
         for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                obj.Material = Enum.Material.Plastic
-                obj.Reflectance = 0
-            elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                obj:Destroy()
-            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-                obj:Destroy()
-            elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
-                obj:Destroy()
-            end
+            pcall(function()
+                if obj:IsA("BasePart") then
+                    obj.Material = Enum.Material.Plastic
+                    obj.Reflectance = 0
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                    obj:Destroy()
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                    obj:Destroy()
+                elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+                    obj:Destroy()
+                end
+            end)
         end
 
         for _, player in ipairs(Players:GetPlayers()) do
             local char = player.Character
             if char then
                 for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("Accessory") or part:IsA("Clothing") then
-                        part:Destroy()
-                    end
+                    pcall(function()
+                        if part:IsA("Accessory") or part:IsA("Clothing") then
+                            part:Destroy()
+                        end
+                    end)
                 end
             end
         end
@@ -1529,12 +1581,14 @@ FPSTab:Button({
     Icon = "image-off",
     Callback = function()
         for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                obj.Material = Enum.Material.SmoothPlastic
-                obj.Reflectance = 0
-            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-                obj.Enabled = false
-            end
+            pcall(function()
+                if obj:IsA("BasePart") then
+                    obj.Material = Enum.Material.SmoothPlastic
+                    obj.Reflectance = 0
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                    obj.Enabled = false
+                end
+            end)
         end
     end
 })
@@ -1544,22 +1598,26 @@ FPSTab:Button({
     Desc = "Smoother + Remove fog and effects",
     Callback = function()
         for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                obj.Material = Enum.Material.SmoothPlastic
-                obj.Reflectance = 0
-            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-                obj.Enabled = false
-            elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                obj:Destroy()
-            end
+            pcall(function()
+                if obj:IsA("BasePart") then
+                    obj.Material = Enum.Material.SmoothPlastic
+                    obj.Reflectance = 0
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                    obj.Enabled = false
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                    obj:Destroy()
+                end
+            end)
         end
 
         local Lighting = game:GetService("Lighting")
-        Lighting.FogEnd = 100000
-        Lighting.FogStart = 0
-        Lighting.GlobalShadows = false
+        pcall(function()
+            Lighting.FogEnd = 100000
+            Lighting.FogStart = 0
+            Lighting.GlobalShadows = false
+        end)
         
-        WindUI:Notify({
+        getgenv().WindUI:Notify({
             Title = "Graphics Optimized",
             Content = "V.2 optimization applied successfully",
             Duration = 3
@@ -1569,25 +1627,19 @@ FPSTab:Button({
 
 local function optimizeGraphics()
     for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            pcall(function()
+        pcall(function()
+            if obj:IsA("BasePart") then
                 obj.Material = Enum.Material.SmoothPlastic
                 obj.Reflectance = 0
                 obj.CastShadow = false
-            end)
-        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-            pcall(function()
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
                 obj.Enabled = false
-            end)
-        elseif obj:IsA("Decal") then
-            pcall(function()
+            elseif obj:IsA("Decal") then
                 obj.Transparency = 1
-            end)
-        elseif obj:IsA("MeshPart") then
-            pcall(function()
+            elseif obj:IsA("MeshPart") then
                 obj.RenderFidelity = Enum.RenderFidelity.Performance
-            end)
-        end
+            end
+        end)
     end
     
     local lighting = game:GetService("Lighting")
@@ -1600,29 +1652,33 @@ local function optimizeGraphics()
     end)
     
     workspace.DescendantAdded:Connect(function(obj)
-        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-            task.wait(0.1)
-            pcall(function()
+        task.wait(0.1)
+        pcall(function()
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
                 obj.Enabled = false
-            end)
-        end
+            end
+        end)
     end)
 end
 
 local function optimizeNetwork()
     local stats = game:GetService("Stats")
-    settings().Physics.AllowSleep = true
-    settings().Network.IncomingReplicationLag = 0
-    game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge)
+    pcall(function()
+        settings().Physics.AllowSleep = true
+        settings().Network.IncomingReplicationLag = 0
+        game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge)
+    end)
 end
 
 local function cleanWorkspace()
     for _, obj in ipairs(workspace:GetChildren()) do
-        if obj:IsA("Model") and obj.Name == "Debris" then
-            obj:Destroy()
-        elseif obj:IsA("BasePart") and obj.Transparency > 0.8 then
-            obj:Destroy()
-        end
+        pcall(function()
+            if obj:IsA("Model") and obj.Name == "Debris" then
+                obj:Destroy()
+            elseif obj:IsA("BasePart") and obj.Transparency > 0.8 then
+                obj:Destroy()
+            end
+        end)
     end
 end
 
@@ -1635,7 +1691,7 @@ FPSTab:Button({
         optimizeNetwork()
         cleanWorkspace()
         
-        WindUI:Notify({
+        getgenv().WindUI:Notify({
             Title = "Lag Fix Applied",
             Content = "Game performance optimized",
             Duration = 3
@@ -1649,14 +1705,21 @@ FPSTab:Toggle({
     Default = false,
     Callback = function(state)
         if state then
-            workspace.DescendantAdded:Connect(function(obj)
-                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-                    task.wait(0.1)
-                    pcall(function()
+            local optimizeConnection
+            optimizeConnection = workspace.DescendantAdded:Connect(function(obj)
+                task.wait(0.1)
+                pcall(function()
+                    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
                         obj.Enabled = false
-                    end)
-                end
+                    end
+                end)
             end)
+            getgenv().VoltexUI.Connections["AutoOptimize"] = optimizeConnection
+        else
+            if getgenv().VoltexUI.Connections["AutoOptimize"] then
+                getgenv().VoltexUI.Connections["AutoOptimize"]:Disconnect()
+                getgenv().VoltexUI.Connections["AutoOptimize"] = nil
+            end
         end
     end
 })
@@ -1677,22 +1740,24 @@ FPSTab:Toggle({
                 UserGameSettings:SetQualityLevel(1)
             end)
             
-            RunService:Set3dRenderingEnabled(false)
-            settings().Physics.DeterministicInterpolationStyle = Enum.DeterministicInterpolationStyle.Disabled
-        else
-            RunService:Set3dRenderingEnabled(true)
             pcall(function()
+                RunService:Set3dRenderingEnabled(false)
+                settings().Physics.DeterministicInterpolationStyle = Enum.DeterministicInterpolationStyle.Disabled
+            end)
+        else
+            pcall(function()
+                RunService:Set3dRenderingEnabled(true)
                 UserGameSettings:SetQualityLevel(5)
             end)
         end
     end
 })
 
-local espObjects = {}
-local espThreads = {}
+getgenv().VoltexUI.espObjects = {}
+getgenv().VoltexUI.espThreads = {}
 
 local function createESP(part, name, baseColor)
-    if espObjects[part] then return espObjects[part] end
+    if getgenv().VoltexUI.espObjects[part] then return getgenv().VoltexUI.espObjects[part] end
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = name .. "ESP"
@@ -1715,29 +1780,33 @@ local function createESP(part, name, baseColor)
     label.TextColor3 = baseColor or Color3.fromRGB(255, 255, 255)
     label.Parent = billboard
     
-    espObjects[part] = {billboard = billboard, label = label, type = name}
-    return espObjects[part]
+    getgenv().VoltexUI.espObjects[part] = {billboard = billboard, label = label, type = name}
+    return getgenv().VoltexUI.espObjects[part]
 end
 
 local function removeESP(part)
-    if espObjects[part] then
-        espObjects[part].billboard:Destroy()
-        espObjects[part] = nil
+    if getgenv().VoltexUI.espObjects[part] then
+        pcall(function()
+            getgenv().VoltexUI.espObjects[part].billboard:Destroy()
+        end)
+        getgenv().VoltexUI.espObjects[part] = nil
     end
 end
 
 local function cleanupESP()
-    for part, data in pairs(espObjects) do
+    for part, data in pairs(getgenv().VoltexUI.espObjects) do
         if data and data.billboard then
-            data.billboard:Destroy()
+            pcall(function()
+                data.billboard:Destroy()
+            end)
         end
     end
-    espObjects = {}
+    getgenv().VoltexUI.espObjects = {}
     
-    for name, thread in pairs(espThreads) do
+    for name, thread in pairs(getgenv().VoltexUI.espThreads) do
         if thread then
             coroutine.close(thread)
-            espThreads[name] = nil
+            getgenv().VoltexUI.espThreads[name] = nil
         end
     end
 end
@@ -1746,14 +1815,14 @@ EspTab:Toggle({
     Title = "Esp Player",
     Value = false,
     Callback = function(state)
-        FeatureStates.EspPlayer = state
+        getgenv().VoltexUI.FeatureStates.EspPlayer = state
         
-        if espThreads["player"] then
-            coroutine.close(espThreads["player"])
-            espThreads["player"] = nil
+        if getgenv().VoltexUI.espThreads["player"] then
+            coroutine.close(getgenv().VoltexUI.espThreads["player"])
+            getgenv().VoltexUI.espThreads["player"] = nil
         end
         
-        for part, data in pairs(espObjects) do
+        for part, data in pairs(getgenv().VoltexUI.espObjects) do
             if data and data.type == "Player" then
                 removeESP(part)
             end
@@ -1761,14 +1830,14 @@ EspTab:Toggle({
         
         if not state then return end
         
-        espThreads["player"] = coroutine.create(function()
+        getgenv().VoltexUI.espThreads["player"] = coroutine.create(function()
             local function getDistance(pos)
                 local char = LocalPlayer.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 return hrp and (pos - hrp.Position).Magnitude or 0
             end
             
-            while FeatureStates.EspPlayer do
+            while getgenv().VoltexUI.FeatureStates.EspPlayer do
                 local folder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
                 if folder then
                     for _, char in ipairs(folder:GetChildren()) do
@@ -1779,13 +1848,13 @@ EspTab:Toggle({
                         local hrp = char:FindFirstChild("HumanoidRootPart")
                         if not hrp then continue end
                         
-                        local espData = espObjects[hrp]
+                        local espData = getgenv().VoltexUI.espObjects[hrp]
                         if not espData then
                             espData = createESP(hrp, "Player", Color3.fromRGB(100, 180, 255))
                         end
                         
                         if not espData or not espData.billboard or not espData.billboard.Parent then
-                            espObjects[hrp] = nil
+                            getgenv().VoltexUI.espObjects[hrp] = nil
                             continue
                         end
                         
@@ -1813,7 +1882,7 @@ EspTab:Toggle({
             end
         end)
         
-        coroutine.resume(espThreads["player"])
+        coroutine.resume(getgenv().VoltexUI.espThreads["player"])
     end
 })
 
@@ -1821,14 +1890,14 @@ EspTab:Toggle({
     Title = "Esp Ticket",
     Value = false,
     Callback = function(state)
-        FeatureStates.EspTicket = state
+        getgenv().VoltexUI.FeatureStates.EspTicket = state
         
-        if espThreads["ticket"] then
-            coroutine.close(espThreads["ticket"])
-            espThreads["ticket"] = nil
+        if getgenv().VoltexUI.espThreads["ticket"] then
+            coroutine.close(getgenv().VoltexUI.espThreads["ticket"])
+            getgenv().VoltexUI.espThreads["ticket"] = nil
         end
         
-        for part, data in pairs(espObjects) do
+        for part, data in pairs(getgenv().VoltexUI.espObjects) do
             if data and data.type == "Ticket" then
                 removeESP(part)
             end
@@ -1836,14 +1905,14 @@ EspTab:Toggle({
         
         if not state then return end
         
-        espThreads["ticket"] = coroutine.create(function()
+        getgenv().VoltexUI.espThreads["ticket"] = coroutine.create(function()
             local function getDistance(pos)
                 local char = LocalPlayer.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 return hrp and (pos - hrp.Position).Magnitude or 0
             end
             
-            while FeatureStates.EspTicket do
+            while getgenv().VoltexUI.FeatureStates.EspTicket do
                 local ticketFolder = workspace:FindFirstChild("Game") and 
                                    workspace.Game:FindFirstChild("Effects") and 
                                    workspace.Game.Effects:FindFirstChild("Tickets")
@@ -1855,13 +1924,13 @@ EspTab:Toggle({
                         local part = ticketModel:FindFirstChildWhichIsA("BasePart")
                         if not part then continue end
                         
-                        local espData = espObjects[part]
+                        local espData = getgenv().VoltexUI.espObjects[part]
                         if not espData then
                             espData = createESP(part, "Ticket", Color3.fromRGB(255, 255, 100))
                         end
                         
                         if not espData or not espData.billboard or not espData.billboard.Parent then
-                            espObjects[part] = nil
+                            getgenv().VoltexUI.espObjects[part] = nil
                             continue
                         end
                         
@@ -1873,7 +1942,7 @@ EspTab:Toggle({
             end
         end)
         
-        coroutine.resume(espThreads["ticket"])
+        coroutine.resume(getgenv().VoltexUI.espThreads["ticket"])
     end
 })
 
@@ -1881,14 +1950,14 @@ EspTab:Toggle({
     Title = "Esp Nextbot",
     Value = false,
     Callback = function(state)
-        FeatureStates.EspNextbot = state
+        getgenv().VoltexUI.FeatureStates.EspNextbot = state
         
-        if espThreads["nextbot"] then
-            coroutine.close(espThreads["nextbot"])
-            espThreads["nextbot"] = nil
+        if getgenv().VoltexUI.espThreads["nextbot"] then
+            coroutine.close(getgenv().VoltexUI.espThreads["nextbot"])
+            getgenv().VoltexUI.espThreads["nextbot"] = nil
         end
         
-        for part, data in pairs(espObjects) do
+        for part, data in pairs(getgenv().VoltexUI.espObjects) do
             if data and data.type == "Nextbot" then
                 removeESP(part)
             end
@@ -1896,14 +1965,14 @@ EspTab:Toggle({
         
         if not state then return end
         
-        espThreads["nextbot"] = coroutine.create(function()
+        getgenv().VoltexUI.espThreads["nextbot"] = coroutine.create(function()
             local function getDistance(pos)
                 local char = LocalPlayer.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 return hrp and (pos - hrp.Position).Magnitude or 0
             end
             
-            while FeatureStates.EspNextbot do
+            while getgenv().VoltexUI.FeatureStates.EspNextbot do
                 local folder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
                 if folder then
                     for _, npc in ipairs(folder:GetChildren()) do
@@ -1916,13 +1985,13 @@ EspTab:Toggle({
                                     npc:FindFirstChildWhichIsA("BasePart")
                         if not part then continue end
                         
-                        local espData = espObjects[part]
+                        local espData = getgenv().VoltexUI.espObjects[part]
                         if not espData then
                             espData = createESP(part, "Nextbot", Color3.fromRGB(200, 100, 255))
                         end
                         
                         if not espData or not espData.billboard or not espData.billboard.Parent then
-                            espObjects[part] = nil
+                            getgenv().VoltexUI.espObjects[part] = nil
                             continue
                         end
                         
@@ -1945,16 +2014,16 @@ EspTab:Toggle({
             end
         end)
         
-        coroutine.resume(espThreads["nextbot"])
+        coroutine.resume(getgenv().VoltexUI.espThreads["nextbot"])
     end
 })
 
-local highlightThread
-local highlights = {}
+getgenv().VoltexUI.highlightThread = nil
+getgenv().VoltexUI.highlights = {}
 
 local function getHighlight(char)
-    if highlights[char] then
-        return highlights[char]
+    if getgenv().VoltexUI.highlights[char] then
+        return getgenv().VoltexUI.highlights[char]
     end
 
     local h = Instance.new("Highlight")
@@ -1964,37 +2033,37 @@ local function getHighlight(char)
     h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     h.Parent = char
 
-    highlights[char] = h
+    getgenv().VoltexUI.highlights[char] = h
     return h
 end
 
 local function clearHighlights()
-    for _, h in pairs(highlights) do
+    for _, h in pairs(getgenv().VoltexUI.highlights) do
         if h then
             pcall(function()
                 h:Destroy()
             end)
         end
     end
-    table.clear(highlights)
+    table.clear(getgenv().VoltexUI.highlights)
 end
 
 EspTab:Toggle({
     Title = "Highlight Players",
     Value = false,
     Callback = function(state)
-        FeatureStates.HighlightPlayers = state
+        getgenv().VoltexUI.FeatureStates.HighlightPlayers = state
 
-        if highlightThread then
-            coroutine.close(highlightThread)
-            highlightThread = nil
+        if getgenv().VoltexUI.highlightThread then
+            coroutine.close(getgenv().VoltexUI.highlightThread)
+            getgenv().VoltexUI.highlightThread = nil
         end
 
         clearHighlights()
         if not state then return end
 
-        highlightThread = coroutine.create(function()
-            while FeatureStates.HighlightPlayers do
+        getgenv().VoltexUI.highlightThread = coroutine.create(function()
+            while getgenv().VoltexUI.FeatureStates.HighlightPlayers do
                 local folder = workspace:FindFirstChild("Game")
                     and workspace.Game:FindFirstChild("Players")
 
@@ -2022,13 +2091,13 @@ EspTab:Toggle({
             end
         end)
 
-        coroutine.resume(highlightThread)
+        coroutine.resume(getgenv().VoltexUI.highlightThread)
     end
 })
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Darahub/evade/TimerGUI-NoRepeat"))()
 
-local timerDisplayLoop
+getgenv().VoltexUI.timerDisplayLoop = nil
 
 VisualTab:Toggle({
     Title = "Timer Display",
@@ -2037,37 +2106,44 @@ VisualTab:Toggle({
         local pg = LocalPlayer.PlayerGui
 
         if state then
-            if timerDisplayLoop then return end
+            if getgenv().VoltexUI.timerDisplayLoop then return end
 
-            timerDisplayLoop = RunService.RenderStepped:Connect(function()
+            getgenv().VoltexUI.timerDisplayLoop = RunService.RenderStepped:Connect(function()
+                pcall(function()
+                    local main = pg:FindFirstChild("MainInterface")
+                    local container = main and main:FindFirstChild("TimerContainer")
+                    if container then
+                        container.Visible = true
+                    end
+
+                    local shared = pg:FindFirstChild("Shared")
+                    local hud = shared and shared:FindFirstChild("HUD")
+                    local overlay = hud and hud:FindFirstChild("Overlay")
+                    local default = overlay and overlay:FindFirstChild("Default")
+                    local ro = default and default:FindFirstChild("RoundOverlay")
+                    local round = ro and ro:FindFirstChild("Round")
+                    local timer = round and round:FindFirstChild("RoundTimer")
+                    if timer then
+                        timer.Visible = false
+                    end
+                end)
+            end)
+            
+            getgenv().VoltexUI.Connections["TimerDisplay"] = getgenv().VoltexUI.timerDisplayLoop
+        else
+            if getgenv().VoltexUI.timerDisplayLoop then
+                getgenv().VoltexUI.timerDisplayLoop:Disconnect()
+                getgenv().VoltexUI.timerDisplayLoop = nil
+                getgenv().VoltexUI.Connections["TimerDisplay"] = nil
+            end
+
+            pcall(function()
                 local main = pg:FindFirstChild("MainInterface")
                 local container = main and main:FindFirstChild("TimerContainer")
                 if container then
-                    container.Visible = true
-                end
-
-                local shared = pg:FindFirstChild("Shared")
-                local hud = shared and shared:FindFirstChild("HUD")
-                local overlay = hud and hud:FindFirstChild("Overlay")
-                local default = overlay and overlay:FindFirstChild("Default")
-                local ro = default and default:FindFirstChild("RoundOverlay")
-                local round = ro and ro:FindFirstChild("Round")
-                local timer = round and round:FindFirstChild("RoundTimer")
-                if timer then
-                    timer.Visible = false
+                    container.Visible = false
                 end
             end)
-        else
-            if timerDisplayLoop then
-                timerDisplayLoop:Disconnect()
-                timerDisplayLoop = nil
-            end
-
-            local main = pg:FindFirstChild("MainInterface")
-            local container = main and main:FindFirstChild("TimerContainer")
-            if container then
-                container.Visible = false
-            end
         end
     end
 })
@@ -2099,19 +2175,19 @@ local function manualRevive()
     local isDowned = character:GetAttribute("Downed")
     if not isDowned then return end
     
-    if FeatureStates.SelfReviveMethod == "Spawnpoint" then
-        if not hasRevived then
-            hasRevived = true
+    if getgenv().VoltexUI.FeatureStates.SelfReviveMethod == "Spawnpoint" then
+        if not getgenv().VoltexUI.hasRevived then
+            getgenv().VoltexUI.hasRevived = true
             pcall(function()
                 ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
             end)
             task.delay(10, function()
-                hasRevived = false
+                getgenv().VoltexUI.hasRevived = false
             end)
         end
-    elseif FeatureStates.SelfReviveMethod == "Fake Revive" then
+    elseif getgenv().VoltexUI.FeatureStates.SelfReviveMethod == "Fake Revive" then
         if hrp then
-            lastSavedPosition = hrp.Position
+            getgenv().VoltexUI.lastSavedPosition = hrp.Position
         end
         task.spawn(function()
             pcall(function()
@@ -2128,8 +2204,8 @@ local function manualRevive()
             
             if newCharacter then
                 local newHRP = newCharacter:FindFirstChild("HumanoidRootPart")
-                if lastSavedPosition and newHRP then
-                    newHRP.CFrame = CFrame.new(lastSavedPosition)
+                if getgenv().VoltexUI.lastSavedPosition and newHRP then
+                    newHRP.CFrame = CFrame.new(getgenv().VoltexUI.lastSavedPosition)
                 end
             end
         end)
@@ -2152,7 +2228,7 @@ VisualTab:Input({
     Callback = function(Value)
         local num = tonumber(Value)
         if num then
-            FeatureStates.CameraStretchVertical = num
+            getgenv().VoltexUI.FeatureStates.CameraStretchVertical = num
         end
     end
 })
@@ -2164,34 +2240,38 @@ VisualTab:Input({
     Callback = function(Value)
         local num = tonumber(Value)
         if num then
-            FeatureStates.CameraStretchHorizontal = num
+            getgenv().VoltexUI.FeatureStates.CameraStretchHorizontal = num
         end
     end
 })
 
-local ScreenStretchEnabled = false
-local ScreenStretchVertical = 0.65
-local ScreenStretchConn = nil
+getgenv().VoltexUI.ScreenStretchEnabled = false
+getgenv().VoltexUI.ScreenStretchVertical = 0.65
+getgenv().VoltexUI.ScreenStretchConn = nil
 
 VisualTab:Toggle({
     Title = "Screen Stretch",
     Desc = "Adjust vertical camera scaling",
     Value = false,
     Callback = function(state)
-        ScreenStretchEnabled = state
+        getgenv().VoltexUI.ScreenStretchEnabled = state
         
         if state then
-            if not ScreenStretchConn then
-                ScreenStretchConn = RunService.RenderStepped:Connect(function()
-                    if Camera and ScreenStretchEnabled then
-                        Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, ScreenStretchVertical, 0, 0, 0, 1)
+            if not getgenv().VoltexUI.ScreenStretchConn then
+                getgenv().VoltexUI.ScreenStretchConn = RunService.RenderStepped:Connect(function()
+                    if Camera and getgenv().VoltexUI.ScreenStretchEnabled then
+                        pcall(function()
+                            Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, getgenv().VoltexUI.ScreenStretchVertical, 0, 0, 0, 1)
+                        end)
                     end
                 end)
+                getgenv().VoltexUI.Connections["ScreenStretch"] = getgenv().VoltexUI.ScreenStretchConn
             end
         else
-            if ScreenStretchConn then
-                ScreenStretchConn:Disconnect()
-                ScreenStretchConn = nil
+            if getgenv().VoltexUI.ScreenStretchConn then
+                getgenv().VoltexUI.ScreenStretchConn:Disconnect()
+                getgenv().VoltexUI.ScreenStretchConn = nil
+                getgenv().VoltexUI.Connections["ScreenStretch"] = nil
             end
         end
     end
@@ -2203,12 +2283,12 @@ VisualTab:Section({ Title = "Emote Changer", TextSize = 20 })
 VisualTab:Divider()
 
 for i = 1, 12 do
-   currentEmoteInputs[i] = VisualTab:Input({
+   getgenv().VoltexUI.currentEmoteInputs[i] = VisualTab:Input({
         Title = "Current Emote " .. i,
         Placeholder = "Enter current emote name",
-        Value = currentEmotes[i],
+        Value = getgenv().VoltexUI.currentEmotes[i],
         Callback = function(v) 
-            currentEmotes[i] = v:gsub("%s+", "")
+            getgenv().VoltexUI.currentEmotes[i] = v:gsub("%s+", "")
         end
     })
 end
@@ -2216,17 +2296,17 @@ end
 VisualTab:Divider()
 
 for i = 1, 12 do
-   selectEmoteInputs[i] = VisualTab:Input({
+   getgenv().VoltexUI.selectEmoteInputs[i] = VisualTab:Input({
         Title = "Select Emote " .. i,
         Placeholder = "Enter select emote name",
-        Value = selectEmotes[i],
+        Value = getgenv().VoltexUI.selectEmotes[i],
         Callback = function(v) 
-            selectEmotes[i] = v:gsub("%s+", "")
+            getgenv().VoltexUI.selectEmotes[i] = v:gsub("%s+", "")
         end
     })
 end
 
-local EmoteOptionInput = VisualTab:Input({
+VisualTab:Input({
     Title = "Emote Possible option",
     Desc = "Higher Value may Broke emote animation recommend Use 1-3",
     Placeholder = "1",
@@ -2239,7 +2319,9 @@ local EmoteOptionInput = VisualTab:Input({
         
         local function setupCharacter(character)
             if character == player.Character then
-                character:SetAttribute("EmoteNum", currentNum)
+                pcall(function()
+                    character:SetAttribute("EmoteNum", currentNum)
+                end)
             end
         end
         
@@ -2248,7 +2330,9 @@ local EmoteOptionInput = VisualTab:Input({
                 wait(1)
                 local character = player.Character
                 if character and character:GetAttribute("EmoteNum") ~= currentNum then
-                    character:SetAttribute("EmoteNum", currentNum)
+                    pcall(function()
+                        character:SetAttribute("EmoteNum", currentNum)
+                    end)
                 end
             end
         end
@@ -2270,14 +2354,14 @@ local function applyEmoteMappings()
     local hasAnyEmote = false
     
     for i=1,12 do
-        if currentEmotes[i] ~= "" or selectEmotes[i] ~= "" then
+        if getgenv().VoltexUI.currentEmotes[i] ~= "" or getgenv().VoltexUI.selectEmotes[i] ~= "" then
             hasAnyEmote = true
             break
         end
     end
     
     if not hasAnyEmote then
-        WindUI:Notify({
+        getgenv().WindUI:Notify({
             Title="Emote Changer",
             Content="Please enter your emote",
             Duration=3
@@ -2316,22 +2400,22 @@ local function applyEmoteMappings()
     local successfulSlots = {}
     
     for i=1,12 do
-        if currentEmotes[i] ~= "" and selectEmotes[i] ~= "" then
-            local currentValid, currentActual = isValidEmote(currentEmotes[i])
-            local selectValid, selectActual = isValidEmote(selectEmotes[i])
+        if getgenv().VoltexUI.currentEmotes[i] ~= "" and getgenv().VoltexUI.selectEmotes[i] ~= "" then
+            local currentValid, currentActual = isValidEmote(getgenv().VoltexUI.currentEmotes[i])
+            local selectValid, selectActual = isValidEmote(getgenv().VoltexUI.selectEmotes[i])
             
             if not currentValid and not selectValid then
-                table.insert(invalidEmoteSlots, {slot = i, currentInvalid = true, currentName = currentEmotes[i], selectInvalid = true, selectName = selectEmotes[i]})
+                table.insert(invalidEmoteSlots, {slot = i, currentInvalid = true, currentName = getgenv().VoltexUI.currentEmotes[i], selectInvalid = true, selectName = getgenv().VoltexUI.selectEmotes[i]})
             elseif not currentValid then
-                table.insert(invalidEmoteSlots, {slot = i, currentInvalid = true, currentName = currentEmotes[i], selectInvalid = false, selectName = selectEmotes[i]})
+                table.insert(invalidEmoteSlots, {slot = i, currentInvalid = true, currentName = getgenv().VoltexUI.currentEmotes[i], selectInvalid = false, selectName = getgenv().VoltexUI.selectEmotes[i]})
             elseif not selectValid then
-                table.insert(invalidEmoteSlots, {slot = i, currentInvalid = false, currentName = currentEmotes[i], selectInvalid = true, selectName = selectEmotes[i]})
+                table.insert(invalidEmoteSlots, {slot = i, currentInvalid = false, currentName = getgenv().VoltexUI.currentEmotes[i], selectInvalid = true, selectName = getgenv().VoltexUI.selectEmotes[i]})
             elseif currentActual:lower() == selectActual:lower() then
                 table.insert(sameEmoteSlots, i)
             else
                 table.insert(successfulSlots, {slot = i, current = currentActual, select = selectActual})
             end
-        elseif currentEmotes[i] ~= "" or selectEmotes[i] ~= "" then
+        elseif getgenv().VoltexUI.currentEmotes[i] ~= "" or getgenv().VoltexUI.selectEmotes[i] ~= "" then
             table.insert(missingEmoteSlots, i)
         end
     end
@@ -2372,7 +2456,7 @@ local function applyEmoteMappings()
     if #missingEmoteSlots > 0 then
         message = message .. "<font color='##ff0000'><stroke color='#FFFFFF' width='0.0001'>Failed to apply emote on:</stroke></font>\n"
         for _, slot in ipairs(missingEmoteSlots) do
-            if currentEmotes[slot] == "" then
+            if getgenv().VoltexUI.currentEmotes[slot] == "" then
                 message = message .. "<font color='##ff0000'><stroke color='#FFFFFF' width='0.0001'>Slot " .. slot .. " - Current emote slot is missing text</stroke></font>\n"
             else
                 message = message .. "<font color='##ff0000'><stroke color='#FFFFFF' width='0.0001'>Slot " .. slot .. " - Select emote slot is missing text</stroke></font>\n"
@@ -2381,12 +2465,12 @@ local function applyEmoteMappings()
     end
     
     for i=1,12 do
-        local currentValid = isValidEmote(currentEmotes[i])
-        local selectValid = isValidEmote(selectEmotes[i])
-        emoteEnabled[i] = (currentValid and selectValid and currentEmotes[i]:lower() ~= selectEmotes[i]:lower())
+        local currentValid = isValidEmote(getgenv().VoltexUI.currentEmotes[i])
+        local selectValid = isValidEmote(getgenv().VoltexUI.selectEmotes[i])
+        getgenv().VoltexUI.emoteEnabled[i] = (currentValid and selectValid and getgenv().VoltexUI.currentEmotes[i]:lower() ~= getgenv().VoltexUI.selectEmotes[i]:lower())
     end
     
-    WindUI:Notify({
+    getgenv().WindUI:Notify({
         Title="Emote Changer",
         Content=message,
         Duration=8
@@ -2404,19 +2488,19 @@ VisualTab:Button({
     Icon = "trash-2",
     Callback = function()
         for i = 1, 12 do
-            currentEmotes[i] = ""
-            selectEmotes[i] = ""
-            emoteEnabled[i] = false
+            getgenv().VoltexUI.currentEmotes[i] = ""
+            getgenv().VoltexUI.selectEmotes[i] = ""
+            getgenv().VoltexUI.emoteEnabled[i] = false
             
-            if currentEmoteInputs[i] and currentEmoteInputs[i].Set then
-                currentEmoteInputs[i]:Set("")
+            if getgenv().VoltexUI.currentEmoteInputs[i] and getgenv().VoltexUI.currentEmoteInputs[i].Set then
+                getgenv().VoltexUI.currentEmoteInputs[i]:Set("")
             end
-            if selectEmoteInputs[i] and selectEmoteInputs[i].Set then
-                selectEmoteInputs[i]:Set("")
+            if getgenv().VoltexUI.selectEmoteInputs[i] and getgenv().VoltexUI.selectEmoteInputs[i].Set then
+                getgenv().VoltexUI.selectEmoteInputs[i]:Set("")
             end
         end
         
-        WindUI:Notify({
+        getgenv().WindUI:Notify({
             Title = "Emote Changer", 
             Content = "All emotes have been reset!"
         })
@@ -2425,97 +2509,174 @@ VisualTab:Button({
 
 VisualTab:Divider()
 
-local cosmetic1, cosmetic2 = "" 
-    local originalCosmetic1, originalCosmetic2 = "", ""
-    local isSwapped = false
-    
-    VisualTab:Input({
-        Title = "Current Cosmetics",
-        Placeholder = "",
-        Callback = function(v) 
-            cosmetic1 = v
-            if not isSwapped then
-                originalCosmetic1 = v
-            end
+getgenv().VoltexUI.cosmetic1 = ""
+getgenv().VoltexUI.cosmetic2 = ""
+getgenv().VoltexUI.originalCosmetic1 = ""
+getgenv().VoltexUI.originalCosmetic2 = ""
+getgenv().VoltexUI.isSwapped = false
+
+VisualTab:Input({
+    Title = "Current Cosmetics",
+    Placeholder = "",
+    Callback = function(v) 
+        getgenv().VoltexUI.cosmetic1 = v
+        if not getgenv().VoltexUI.isSwapped then
+            getgenv().VoltexUI.originalCosmetic1 = v
         end
-    })
-    
-    VisualTab:Input({
-        Title = "Select Cosmetics",
-        Placeholder = "",
-        Callback = function(v) 
-            cosmetic2 = v
-            if not isSwapped then
-                originalCosmetic2 = v
-            end
+    end
+})
+
+VisualTab:Input({
+    Title = "Select Cosmetics",
+    Placeholder = "",
+    Callback = function(v) 
+        getgenv().VoltexUI.cosmetic2 = v
+        if not getgenv().VoltexUI.isSwapped then
+            getgenv().VoltexUI.originalCosmetic2 = v
         end
-    })
-    
-    VisualTab:Button({
-        Title = "Apply Cosmetics",
-        Callback = function()
-            pcall(function()
-                if cosmetic1 == "" or cosmetic2 == "" or cosmetic1 == cosmetic2 then return end
+    end
+})
+
+VisualTab:Button({
+    Title = "Apply Cosmetics",
+    Callback = function()
+        pcall(function()
+            if getgenv().VoltexUI.cosmetic1 == "" or getgenv().VoltexUI.cosmetic2 == "" or getgenv().VoltexUI.cosmetic1 == getgenv().VoltexUI.cosmetic2 then return end
+            
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")    
+            local Cosmetics = ReplicatedStorage:WaitForChild("Items"):WaitForChild("Cosmetics")    
+            
+            local function normalize(str)    
+                return str:gsub("%s+", ""):lower()    
+            end    
+            
+            local function levenshtein(s, t)    
+                local m, n = #s, #t    
+                local d = {}    
+                for i = 0, m do d[i] = {[0] = i} end    
+                for j = 0, n do d[0][j] = j end    
                 
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")    
-                local Cosmetics = ReplicatedStorage:WaitForChild("Items"):WaitForChild("Cosmetics")    
-                
-                local function normalize(str)    
-                    return str:gsub("%s+", ""):lower()    
-                end    
-                
-                local function levenshtein(s, t)    
-                    local m, n = #s, #t    
-                    local d = {}    
-                    for i = 0, m do d[i] = {[0] = i} end    
-                    for j = 0, n do d[0][j] = j end    
-                    
-                    for i = 1, m do    
-                        for j = 1, n do    
-                            local cost = (s:sub(i,i) == t:sub(j,j)) and 0 or 1    
-                            d[i][j] = math.min(    
-                                d[i-1][j] + 1,    
-                                d[i][j-1] + 1,    
-                                d[i-1][j-1] + cost    
-                            )    
-                        end    
+                for i = 1, m do    
+                    for j = 1, n do    
+                        local cost = (s:sub(i,i) == t:sub(j,j)) and 0 or 1    
+                        d[i][j] = math.min(    
+                            d[i-1][j] + 1,    
+                            d[i][j-1] + 1,    
+                            d[i-1][j-1] + cost    
+                        )    
                     end    
-                    return d[m][n]    
                 end    
-                
-                local function similarity(s, t)    
-                    local nS, nT = normalize(s), normalize(t)    
-                    local dist = levenshtein(nS, nT)    
-                    return 1 - dist / math.max(#nS, #nT)    
-                end    
-                
-                local function findSimilar(name)    
-                    local bestMatch = name    
-                    local bestScore = 0.5    
-                    for _, c in ipairs(Cosmetics:GetChildren()) do    
-                        local score = similarity(name, c.Name)    
-                        if score > bestScore then    
-                            bestScore = score    
-                            bestMatch = c.Name    
-                        end    
+                return d[m][n]    
+            end    
+            
+            local function similarity(s, t)    
+                local nS, nT = normalize(s), normalize(t)    
+                local dist = levenshtein(nS, nT)    
+                return 1 - dist / math.max(#nS, #nT)    
+            end    
+            
+            local function findSimilar(name)    
+                local bestMatch = name    
+                local bestScore = 0.5    
+                for _, c in ipairs(Cosmetics:GetChildren()) do    
+                    local score = similarity(name, c.Name)    
+                    if score > bestScore then    
+                        bestScore = score    
+                        bestMatch = c.Name    
                     end    
-                    return bestMatch    
                 end    
-                
-                cosmetic1 = findSimilar(cosmetic1)    
-                cosmetic2 = findSimilar(cosmetic2)    
-                
-                local a = Cosmetics:FindFirstChild(cosmetic1)    
-                local b = Cosmetics:FindFirstChild(cosmetic2)    
-                if not a or not b then return end    
-                
-                if not isSwapped then
-                    originalCosmetic1 = cosmetic1
-                    originalCosmetic2 = cosmetic2
-                end
-                
+                return bestMatch    
+            end    
+            
+            getgenv().VoltexUI.cosmetic1 = findSimilar(getgenv().VoltexUI.cosmetic1)    
+            getgenv().VoltexUI.cosmetic2 = findSimilar(getgenv().VoltexUI.cosmetic2)    
+            
+            local a = Cosmetics:FindFirstChild(getgenv().VoltexUI.cosmetic1)    
+            local b = Cosmetics:FindFirstChild(getgenv().VoltexUI.cosmetic2)    
+            if not a or not b then return end    
+            
+            if not getgenv().VoltexUI.isSwapped then
+                getgenv().VoltexUI.originalCosmetic1 = getgenv().VoltexUI.cosmetic1
+                getgenv().VoltexUI.originalCosmetic2 = getgenv().VoltexUI.cosmetic2
+            end
+            
+            local tempRoot = Instance.new("Folder", Cosmetics)    
+            tempRoot.Name = "__temp_swap_" .. tostring(tick()):gsub("%.", "_")    
+            
+            local tempA = Instance.new("Folder", tempRoot)    
+            local tempB = Instance.new("Folder", tempRoot)    
+            
+            for _, c in ipairs(a:GetChildren()) do c.Parent = tempA end    
+            for _, c in ipairs(b:GetChildren()) do c.Parent = tempB end    
+            
+            for _, c in ipairs(tempA:GetChildren()) do c.Parent = b end    
+            for _, c in ipairs(tempB:GetChildren()) do c.Parent = a end    
+            
+            tempRoot:Destroy()
+            
+            getgenv().VoltexUI.isSwapped = true
+            
+            getgenv().WindUI:Notify({
+                Title = "Cosmetics Changer",
+                Content = "Successfully swapped " .. getgenv().VoltexUI.cosmetic1 .. " with " .. getgenv().VoltexUI.cosmetic2,
+                Duration = 3
+            })
+        end)    
+    end
+})
+
+VisualTab:Button({
+    Title = "Reset Cosmetics",
+    Desc = "Restore cosmetics to their original state",
+    Callback = function()
+        pcall(function()
+            if not getgenv().VoltexUI.isSwapped then
+                getgenv().WindUI:Notify({
+                    Title = "Cosmetics Changer",
+                    Content = "No cosmetics have been swapped yet",
+                    Duration = 3
+                })
+                return
+            end
+            
+            if getgenv().VoltexUI.originalCosmetic1 == "" or getgenv().VoltexUI.originalCosmetic2 == "" then
+                getgenv().WindUI:Notify({
+                    Title = "Cosmetics Changer",
+                    Content = "Original cosmetic names not found",
+                    Duration = 3
+                })
+                return
+            end
+            
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")    
+            local Cosmetics = ReplicatedStorage:WaitForChild("Items"):WaitForChild("Cosmetics")    
+            
+            local function normalize(str)    
+                return str:gsub("%s+", ""):lower()    
+            end    
+            
+            local function findSimilar(name)    
+                local bestMatch = name    
+                local bestScore = 0.5    
+                for _, c in ipairs(Cosmetics:GetChildren()) do    
+                    local normalizedInput = normalize(name)
+                    local normalizedCosmetic = normalize(c.Name)
+                    if normalizedInput == normalizedCosmetic then
+                        return c.Name
+                    end
+                end    
+                return name
+            end    
+            
+            local resetCosmetic1 = findSimilar(getgenv().VoltexUI.originalCosmetic1)
+            local resetCosmetic2 = findSimilar(getgenv().VoltexUI.originalCosmetic2)
+            
+            local a = Cosmetics:FindFirstChild(getgenv().VoltexUI.cosmetic1)    
+            local b = Cosmetics:FindFirstChild(getgenv().VoltexUI.cosmetic2)    
+            
+            if a and b then
                 local tempRoot = Instance.new("Folder", Cosmetics)    
-                tempRoot.Name = "__temp_swap_" .. tostring(tick()):gsub("%.", "_")    
+                tempRoot.Name = "__temp_reset_" .. tostring(tick()):gsub("%.", "_")    
                 
                 local tempA = Instance.new("Folder", tempRoot)    
                 local tempB = Instance.new("Folder", tempRoot)    
@@ -2528,99 +2689,24 @@ local cosmetic1, cosmetic2 = ""
                 
                 tempRoot:Destroy()
                 
-                isSwapped = true
+                getgenv().VoltexUI.isSwapped = false
                 
-                WindUI:Notify({
+                getgenv().WindUI:Notify({
                     Title = "Cosmetics Changer",
-                    Content = "Successfully swapped " .. cosmetic1 .. " with " .. cosmetic2,
+                    Content = "Successfully reset cosmetics to original state",
                     Duration = 3
                 })
-            end)    
-        end
-    })
-    
-    VisualTab:Button({
-        Title = "Reset Cosmetics",
-        Desc = "Restore cosmetics to their original state",
-        Callback = function()
-            pcall(function()
-                if not isSwapped then
-                    WindUI:Notify({
-                        Title = "Cosmetics Changer",
-                        Content = "No cosmetics have been swapped yet",
-                        Duration = 3
-                    })
-                    return
-                end
-                
-                if originalCosmetic1 == "" or originalCosmetic2 == "" then
-                    WindUI:Notify({
-                        Title = "Cosmetics Changer",
-                        Content = "Original cosmetic names not found",
-                        Duration = 3
-                    })
-                    return
-                end
-                
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")    
-                local Cosmetics = ReplicatedStorage:WaitForChild("Items"):WaitForChild("Cosmetics")    
-                
-                local function normalize(str)    
-                    return str:gsub("%s+", ""):lower()    
-                end    
-                
-                local function findSimilar(name)    
-                    local bestMatch = name    
-                    local bestScore = 0.5    
-                    for _, c in ipairs(Cosmetics:GetChildren()) do    
-                        local normalizedInput = normalize(name)
-                        local normalizedCosmetic = normalize(c.Name)
-                        if normalizedInput == normalizedCosmetic then
-                            return c.Name
-                        end
-                    end    
-                    return name
-                end    
-                
-                local resetCosmetic1 = findSimilar(originalCosmetic1)
-                local resetCosmetic2 = findSimilar(originalCosmetic2)
-                
-                local a = Cosmetics:FindFirstChild(cosmetic1)    
-                local b = Cosmetics:FindFirstChild(cosmetic2)    
-                
-                if a and b then
-                    local tempRoot = Instance.new("Folder", Cosmetics)    
-                    tempRoot.Name = "__temp_reset_" .. tostring(tick()):gsub("%.", "_")    
-                    
-                    local tempA = Instance.new("Folder", tempRoot)    
-                    local tempB = Instance.new("Folder", tempRoot)    
-                    
-                    for _, c in ipairs(a:GetChildren()) do c.Parent = tempA end    
-                    for _, c in ipairs(b:GetChildren()) do c.Parent = tempB end    
-                    
-                    for _, c in ipairs(tempA:GetChildren()) do c.Parent = b end    
-                    for _, c in ipairs(tempB:GetChildren()) do c.Parent = a end    
-                    
-                    tempRoot:Destroy()
-                    
-                    isSwapped = false
-                    
-                    WindUI:Notify({
-                        Title = "Cosmetics Changer",
-                        Content = "Successfully reset cosmetics to original state",
-                        Duration = 3
-                    })
-                else
-                    WindUI:Notify({
-                        Title = "Cosmetics Changer",
-                        Content = "Could not find swapped cosmetics to reset",
-                        Duration = 3
-                    })
-                end
-            end)
-        end
-    }) 
-  
+            else
+                getgenv().WindUI:Notify({
+                    Title = "Cosmetics Changer",
+                    Content = "Could not find swapped cosmetics to reset",
+                    Duration = 3
+                })
+            end
+        end)
+    end
+}) 
+
 VisualTab:Divider()
 
 VisualTab:Input({
@@ -2631,7 +2717,7 @@ VisualTab:Input({
         if num then
             pcall(function()
                 LocalPlayer:SetAttribute("Streak", num)
-                WindUI:Notify({
+                getgenv().WindUI:Notify({
                     Title = "Streak",
                     Content = string.format("Streak set to %d", num),
                     Duration = 3
@@ -2644,7 +2730,7 @@ VisualTab:Input({
 SettingsTab:Section({Title = "Settings"})
 
 local themeValues = {}
-for name, _ in pairs(WindUI:GetThemes()) do
+for name, _ in pairs(getgenv().WindUI:GetThemes()) do
     table.insert(themeValues, name)
 end
 
@@ -2654,11 +2740,11 @@ local themeDropdown = SettingsTab:Dropdown({
     AllowNone = false,
     Values = themeValues,
     Callback = function(theme)
-        WindUI:SetTheme(theme)
+        getgenv().WindUI:SetTheme(theme)
     end
 })
 
-themeDropdown:Select(WindUI:GetCurrentTheme())
+themeDropdown:Select(getgenv().WindUI:GetCurrentTheme())
 
 local currentBackground = "rbxassetid://85878831310179"
 
@@ -2702,7 +2788,7 @@ SettingsTab:Toggle({
     Callback = function(e)
         Window:ToggleTransparency(e)
     end,
-    Value = WindUI:GetTransparency()
+    Value = getgenv().WindUI:GetTransparency()
 })
 
 local ConfigManager = Window.ConfigManager
@@ -2712,7 +2798,7 @@ SettingsTab:Button({
     Title = "Save Configuration",
     Callback = function()
         myConfig:Save()
-        WindUI:Notify({
+        getgenv().WindUI:Notify({
             Title = "Configuration",
             Content = "Settings saved successfully!",
             Duration = 3
@@ -2724,7 +2810,7 @@ SettingsTab:Button({
     Title = "Load Configuration",
     Callback = function()
         myConfig:Load()
-        WindUI:Notify({
+        getgenv().WindUI:Notify({
             Title = "Configuration",
             Content = "Settings loaded successfully!",
             Duration = 3
@@ -2765,7 +2851,7 @@ local function createSimpleTimer()
     
     task.spawn(function()
         while true do
-            if FeatureStates.TimerDisplay then
+            if getgenv().VoltexUI.FeatureStates.TimerDisplay then
                 toggleTimer(true)
             else
                 toggleTimer(false)
@@ -2777,61 +2863,47 @@ end
 
 createSimpleTimer()
 
--- ================================
--- CLEANUP FOR FRONT JUMP
--- ================================
 LocalPlayer.CharacterRemoving:Connect(function()
-    if frontJumpVelocity then
-        frontJumpVelocity:Destroy()
-        frontJumpVelocity = nil
+    if getgenv().VoltexUI.frontJumpVelocity then
+        pcall(function()
+            getgenv().VoltexUI.frontJumpVelocity:Destroy()
+        end)
+        getgenv().VoltexUI.frontJumpVelocity = nil
     end
-    FeatureStates.FrontJumpEnabled = false
+    getgenv().VoltexUI.FeatureStates.FrontJumpEnabled = false
 end)
 
--- ================================
--- GLOBAL CLEANUP FUNCTION
--- ================================
 local function cleanupAllSystems()
-    -- Cleanup Anti AFK
     stopAntiAFK()
     
-    -- Cleanup ESP
     cleanupESP()
     clearHighlights()
     
-    -- Cleanup threads
-    if highlightThread then
-        coroutine.close(highlightThread)
-        highlightThread = nil
+    if getgenv().VoltexUI.highlightThread then
+        coroutine.close(getgenv().VoltexUI.highlightThread)
+        getgenv().VoltexUI.highlightThread = nil
     end
     
-    for name, thread in pairs(espThreads) do
+    for name, thread in pairs(getgenv().VoltexUI.espThreads) do
         if thread then
             coroutine.close(thread)
         end
     end
     
-    -- Cleanup connections
-    if bhopConnection then bhopConnection:Disconnect() end
-    if infiniteSlideHeartbeat then infiniteSlideHeartbeat:Disconnect() end
-    if infiniteSlideCharacterConn then infiniteSlideCharacterConn:Disconnect() end
-    if respawnConnection then respawnConnection:Disconnect() end
-    if AutoSelfReviveConnection then AutoSelfReviveConnection:Disconnect() end
-    if InstantReviveConnection then InstantReviveConnection:Disconnect() end
-    if AutoCarryConnection then AutoCarryConnection:Disconnect() end
-    if AutoTicketFarmConnection then AutoTicketFarmConnection:Disconnect() end
-    if FeatureStates.AutoMoneyFarmConnection then FeatureStates.AutoMoneyFarmConnection:Disconnect() end
-    if ScreenStretchConn then ScreenStretchConn:Disconnect() end
-    if timerDisplayLoop then timerDisplayLoop:Disconnect() end
-    
-    -- Cleanup Front Jump
-    if frontJumpVelocity then
-        frontJumpVelocity:Destroy()
-        frontJumpVelocity = nil
+    for name, connection in pairs(getgenv().VoltexUI.Connections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
     end
     
-    -- Cleanup feature toggles GUI
-    for _, toggle in pairs(featureToggles) do
+    if getgenv().VoltexUI.frontJumpVelocity then
+        pcall(function()
+            getgenv().VoltexUI.frontJumpVelocity:Destroy()
+        end)
+        getgenv().VoltexUI.frontJumpVelocity = nil
+    end
+    
+    for _, toggle in pairs(getgenv().VoltexUI.Toggles) do
         if toggle and toggle.Gui then
             pcall(function()
                 toggle.Gui:Destroy()
@@ -2839,30 +2911,25 @@ local function cleanupAllSystems()
         end
     end
     
-    -- Reset feature states
-    FeatureStates.FrontJumpEnabled = false
-    FeatureStates.AutoSelfRevive = false
-    FeatureStates.InfiniteSlide = false
-    FeatureStates.BhopEnabled = false
-    FeatureStates.EspPlayer = false
-    FeatureStates.EspTicket = false
-    FeatureStates.EspNextbot = false
-    FeatureStates.HighlightPlayers = false
-    FeatureStates.AutoCarry = false
-    FeatureStates.AutoTicketFarm = false
-    FeatureStates.AutoMoneyFarm = false
-    FeatureStates.InstantReviveEnabled = false
-    FeatureStates.LagSwitchEnabled = false
-    FeatureStates.EmoteEnabled = false
-    FeatureStates.AntiAFK = false
+    getgenv().VoltexUI.FeatureStates.FrontJumpEnabled = false
+    getgenv().VoltexUI.FeatureStates.AutoSelfRevive = false
+    getgenv().VoltexUI.FeatureStates.InfiniteSlide = false
+    getgenv().VoltexUI.FeatureStates.BhopEnabled = false
+    getgenv().VoltexUI.FeatureStates.EspPlayer = false
+    getgenv().VoltexUI.FeatureStates.EspTicket = false
+    getgenv().VoltexUI.FeatureStates.EspNextbot = false
+    getgenv().VoltexUI.FeatureStates.HighlightPlayers = false
+    getgenv().VoltexUI.FeatureStates.AutoCarry = false
+    getgenv().VoltexUI.FeatureStates.AutoTicketFarm = false
+    getgenv().VoltexUI.FeatureStates.AutoMoneyFarm = false
+    getgenv().VoltexUI.FeatureStates.InstantReviveEnabled = false
+    getgenv().VoltexUI.FeatureStates.LagSwitchEnabled = false
+    getgenv().VoltexUI.FeatureStates.EmoteEnabled = false
+    getgenv().VoltexUI.FeatureStates.AntiAFK = false
 end
 
--- Store cleanup function in global environment
 getgenv().VoltexUICleanup = cleanupAllSystems
 
--- ================================
--- AUTO CLEANUP ON EXIT
--- ================================
 game:GetService("Players").PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then
         cleanupAllSystems()
@@ -2870,16 +2937,14 @@ game:GetService("Players").PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Cleanup when character is removed
 LocalPlayer.CharacterRemoving:Connect(cleanupAllSystems)
 
--- Cleanup on game close
 game:BindToClose(function()
     cleanupAllSystems()
 end)
 
-WindUI:Notify({
-    Title = "VoltexUI",
-    Content = "Script loaded successfully!",
+getgenv().WindUI:Notify({
+    Title = "From Jay",
+    Content = "MERRY CHRISMAST",
     Duration = 5
 })
