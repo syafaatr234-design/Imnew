@@ -1,0 +1,2567 @@
+-- Look at this awful source code by WhakizashiX, entirely made by AI, lolll
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris = game:GetService("Debris")
+local player = Players.LocalPlayer or Players.PlayerAdded:Wait()
+local camera = Workspace.CurrentCamera
+
+local WindUI
+do
+    local ok, result = pcall(function()
+        return require("./src/Init")
+    end)
+    if ok then WindUI = result
+    else WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+    end
+end
+
+WindUI.Services.mysuperservicetogetkey = {
+    Name = "WhakizashiX-Hub-X Key",
+    Icon = "droplet",
+    Args = {},
+    New = function()
+
+        local function copyLink()
+            pcall(function()
+                setclipboard("https://discord.gg/US3pvaq7EN")
+            end)
+        end
+
+        local function levenshtein(a, b)
+            a, b = a:lower(), b:lower()
+            local m, n = #a, #b
+            if m == 0 then return n end
+            if n == 0 then return m end
+
+            local matrix = {}
+            for i = 0, m do matrix[i] = {[0] = i} end
+            for j = 0, n do matrix[0][j] = j end
+
+            for i = 1, m do
+                for j = 1, n do
+                    local cost = (a:sub(i,i) == b:sub(j,j)) and 0 or 1
+                    matrix[i][j] = math.min(
+                        matrix[i-1][j] + 1,
+                        matrix[i][j-1] + 1,
+                        matrix[i-1][j-1] + cost
+                    )
+                end
+            end
+
+            return matrix[m][n]
+        end
+
+        local function isSimilar(input)
+            return levenshtein(input, "WhakizashX") <= 3
+        end
+
+        return {
+            Verify = function(key)
+                if isSimilar(key) then
+                    return true, "Valid Key!"
+                else
+                    return false, "Invalid Key! join our Discord to get the key"
+                end
+            end,
+            Copy = copyLink
+        }
+    end
+}
+
+local Window = WindUI:CreateWindow({
+   Title = "WhakizashiX",
+   Icon = "spiral",
+   Author = "scv8",
+   Folder = "WhakizashiX-Hub-X",
+   NewElements = true,
+   HideSearchBar = true,
+   Theme = "Dark",
+   Size = UDim2.fromOffset(1000, 460),
+
+  Background = "rbxassetid://",
+  KeySystem = {
+  Note = "access our Discord to get the key!",
+  API = {
+  {Type = "mysuperservicetogetkey"},
+},
+},
+})
+Window:EditOpenButton({
+   Title = "WhakizashiX-Hub-X",
+   Icon = "app-window",
+   CornerRadius = UDim.new(0,16),
+   StrokeThickness = 0,
+   Color = ColorSequence.new(Color3.fromRGB(255,0,0), Color3.fromRGB(200,50,0)),
+   Enabled = true,
+   Draggable = true,
+})
+
+local Tabs = {}
+
+
+Tabs.Imp = Window:Section({
+    Title = "Faq",
+    Icon = "circle-question-mark",
+    Opened = true,
+})
+
+
+Tabs.Main = Window:Section({
+    Title = "Main",
+    Icon = "flame",
+    Opened = true,
+})
+
+Tabs.Customise = Window:Section({
+    Title = "Misc",
+    Icon = "bolt",
+    Opened = false,
+}) 
+
+Window:Tag({
+    Title = "Beta",
+    Icon = "bird",
+    Color = Color3.fromHex("#B2B2B2"),
+    Radius = 13, -- from 0 to 13
+})
+
+
+local WhakizashiXTab = Tabs.Imp:Tab({ Title = "WhakizashiX", Icon = "github" })
+local DiscordTab = Tabs.Imp:Tab({ Title = "Discord", Icon = "link" })
+local MainTab = Tabs.Main:Tab({ Title = "Player", Icon = "star" })
+local VisualsTab = Tabs.Main:Tab({ Title = "Esp", Icon = "lock", Locked = "True" })
+local AutoFarmTab = Tabs.Main:Tab({ Title = "AutoFarm", Icon = "lock", Locked = "True" })
+local VisualTab = Tabs.Main:Tab({ Title = "Visual", Icon = "sparkles" })
+local GameTab = Tabs.Customise:Tab({ Title = "Game Settings", Icon = "lock", Locked = "True" })
+local WindowTab = Tabs.Customise:Tab({ Title = "WhakizashiX settings", Icon = "lock", Locked = "True" })
+local Keybind = Tabs.Customise:Tab({ Title = "Keybind", Icon = "keyboard" })
+
+
+end
+
+-- Seção About
+WhakizashiXTab:Paragraph({    
+        Title = "About WhakizashiX",    
+        Desc = "Made By : Svc8,  Special thanks: pakaucsk, ciumesblood, .muryl_ozl, _imxired, tjtinhaa, maxghosttt, Pnsdg" ,
+        Thumbnail = "rbxassetid://125307920527809",
+        ThumbnailSize = 60,
+})
+WhakizashiXTab:Paragraph({    
+        Title = [[
+    Change Logs
+WhakizashiX 1.0.0.1
+    (also known as Lottus / Whakizashi-Hub-X)  ]],
+        Desc = [[  1. Interface rework 
+  2. New options like infinite slide
+  3. Emote Changer Rework
+ 4. Save & Load Config 
+ 5. Optimization & bug fixes
+]],
+       TitleSize = 80,
+})
+
+WhakizashiXTab:Select() -- Select Tab
+
+
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "WhakizashiXtimer"
+screenGui.Parent = PlayerGui
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Enabled = false -- start hidden
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(0, 60, 0, 55)
+textLabel.BackgroundTransparency = 1
+textLabel.TextColor3 = Color3.fromRGB(255,255,255)
+textLabel.TextStrokeColor3 = Color3.fromRGB(0,0,0)
+textLabel.TextStrokeTransparency = 0
+textLabel.Font = Enum.Font.Arcade
+textLabel.TextScaled = true
+textLabel.Text = "0"
+textLabel.AnchorPoint = Vector2.new(0.5, 0)
+textLabel.Position = UDim2.new(0.5, 0, 0, 10)
+textLabel.Parent = screenGui
+
+local statsFolder = workspace:WaitForChild("Game"):WaitForChild("Stats")
+
+RunService.Heartbeat:Connect(function()
+    if screenGui.Enabled then
+        local timerValue = statsFolder:GetAttribute("Timer")
+        textLabel.Text = timerValue and tostring(timerValue) or "0"
+    end
+end)
+
+
+
+
+local Section = MainTab:Section({ 
+    Title = "Player modifications",
+})
+local requiredFields = {
+    Friction = true,
+    AirStrafeAcceleration = true,
+    JumpHeight = true,
+    RunDeaccel = true,
+    JumpSpeedMultiplier = true,
+    JumpCap = true,
+    SprintCap = true,
+    WalkSpeedMultiplier = true,
+    BhopEnabled = true,
+    Speed = true,
+    AirAcceleration = true,
+    RunAccel = true,
+    SprintAcceleration = true,
+}
+
+getgenv().ApplyMode = "Unoptimized"
+local appliedOnce = false
+local gameStatsPath = workspace.Game.Stats
+local playersPath = workspace.Game.Players
+local playerModelPresent = false
+
+local currentSettings = {
+    Speed = "1500",
+    JumpCap = "1",
+    AirStrafeAcceleration = "187"
+}
+
+local function isPlayerModelPresent()
+    local player = game.Players.LocalPlayer
+    if not player then return false end
+    
+    for _, model in pairs(playersPath:GetChildren()) do
+        if model.Name == player.Name then
+            return true
+        end
+    end
+    return false
+end
+
+local function shouldApplySettings()
+    if not gameStatsPath then return false end
+    
+    local roundStarted = gameStatsPath:GetAttribute("RoundStarted")
+    local timer = gameStatsPath:GetAttribute("Timer")
+    
+    return roundStarted == false and timer == 3
+end
+
+local function getMatchingTables()
+    local matched = {}
+    for _, obj in pairs(getgc(true)) do
+        if typeof(obj) == "table" then
+            local ok = true
+            for field in pairs(requiredFields) do
+                if rawget(obj, field) == nil then
+                    ok = false
+                    break
+                end
+            end
+            if ok then
+                table.insert(matched, obj)
+            end
+        end
+    end
+    return matched
+end
+
+local function applyToTables(callback)
+    if not isPlayerModelPresent() then
+        return
+    end
+    
+    local targets = getMatchingTables()
+    
+    if #targets == 0 then
+        return
+    end
+    
+    if getgenv().ApplyMode == "Optimized" then
+        task.spawn(function()
+            for i, tableObj in ipairs(targets) do
+                if tableObj and typeof(tableObj) == "table" then
+                    pcall(callback, tableObj)
+                end
+                
+                if i % 3 == 0 then
+                    task.wait()
+                end
+            end
+        end)
+    else
+        for i, tableObj in ipairs(targets) do
+            if tableObj and typeof(tableObj) == "table" then
+                pcall(callback, tableObj)
+            end
+        end
+    end
+end
+
+local function applyStoredSettings()
+    local settings = {
+        {field = "Speed", value = tonumber(currentSettings.Speed)},
+        {field = "JumpCap", value = tonumber(currentSettings.JumpCap)},
+        {field = "AirStrafeAcceleration", value = tonumber(currentSettings.AirStrafeAcceleration)}
+    }
+    
+    for _, setting in ipairs(settings) do
+        if setting.value and tostring(setting.value) ~= "1500" and tostring(setting.value) ~= "1" and tostring(setting.value) ~= "187" then
+            applyToTables(function(obj)
+                obj[setting.field] = setting.value
+            end)
+        end
+    end
+end
+
+local function applySettingsWithDelay()
+    if not shouldApplySettings() or appliedOnce then
+        return
+    end
+    
+    appliedOnce = true
+    
+    local settings = {
+        {field = "Speed", value = tonumber(currentSettings.Speed), delay = math.random(1, 14)},
+        {field = "JumpCap", value = tonumber(currentSettings.JumpCap), delay = math.random(1, 14)},
+        {field = "AirStrafeAcceleration", value = tonumber(currentSettings.AirStrafeAcceleration), delay = math.random(1, 14)}
+    }
+    
+    for _, setting in ipairs(settings) do
+        if setting.value and tostring(setting.value) ~= "1500" and tostring(setting.value) ~= "1" and tostring(setting.value) ~= "187" then
+            task.spawn(function()
+                task.wait(setting.delay)
+                applyToTables(function(obj)
+                    obj[setting.field] = setting.value
+                end)
+            end)
+        end
+    end
+end
+
+local roundStartedConnection
+local timerConnection
+
+local function setupAttributeConnections()
+    if roundStartedConnection then
+        roundStartedConnection:Disconnect()
+    end
+    if timerConnection then
+        timerConnection:Disconnect()
+    end
+    
+    if gameStatsPath then
+        roundStartedConnection = gameStatsPath:GetAttributeChangedSignal("RoundStarted"):Connect(function()
+            local roundStarted = gameStatsPath:GetAttribute("RoundStarted")
+            if roundStarted == true then
+                appliedOnce = false
+            end
+        end)
+        
+        timerConnection = gameStatsPath:GetAttributeChangedSignal("Timer"):Connect(function()
+            if shouldApplySettings() and not appliedOnce then
+                applySettingsWithDelay()
+            end
+        end)
+    end
+end
+
+setupAttributeConnections()
+
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        local currentlyPresent = isPlayerModelPresent()
+        
+        if currentlyPresent and not playerModelPresent then
+            playerModelPresent = true
+            applyStoredSettings()
+        elseif not currentlyPresent and playerModelPresent then
+            playerModelPresent = false
+        end
+    end
+end)
+
+local function createValidatedInput(config)
+    return function(input)
+        local val = tonumber(input)
+        if not val then
+            return
+        end
+        
+        if config.min and val < config.min then
+            return
+        end
+        
+        if config.max and val > config.max then
+            return
+        end
+        
+        currentSettings[config.field] = input
+        
+        applyToTables(function(obj)
+            obj[config.field] = val
+        end)
+    end
+end
+
+local speed = MainTab:Input({
+    Title = " Speed",
+
+    Placeholder = " 1500",
+    Value = "1500",
+    Callback = createValidatedInput({
+        field = "Speed",
+        min = 1450,
+        max = 100000000
+    })
+})
+
+local jumpc = MainTab:Input({
+    Title = "Jump Cap",
+
+    Placeholder = " 1",
+    Value = "1",
+    Callback = createValidatedInput({
+        field = "JumpCap",
+        min = 0.1,
+        max = 5000000
+    })
+})
+
+local strafes = MainTab:Input({
+    Title = "Strafe speed",
+ 
+    Placeholder = "187",
+    Value = "187",
+    Callback = createValidatedInput({
+        field = "AirStrafeAcceleration",
+        min = 1,
+        max = 1000000000
+    })
+})
+
+MainTab:Dropdown({
+    Title = "Select Apply Method",
+    Values = {"Unoptimized", "Optimized" },
+    Multi = false,
+    Default = "Unoptimized",
+    Callback = function(value)
+        getgenv().ApplyMode = value
+    end,
+})
+
+MainTab:Space()
+
+local Section = MainTab:Section({ 
+    Title = "Emote modifications",
+})
+
+-- salva velocidades originais
+local originalEmoteSpeeds = {}
+local itemsFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Items")
+if itemsFolder then
+    local emotesFolder = itemsFolder:FindFirstChild("Emotes")
+    if emotesFolder then
+        for _, module in ipairs(emotesFolder:GetChildren()) do
+            if module:IsA("ModuleScript") then
+                local ok, data = pcall(require, module)
+                if ok and data and data.EmoteInfo then
+                    originalEmoteSpeeds[module.Name] = data.EmoteInfo.SpeedMult
+                end
+            end
+        end
+    end
+end
+
+-- define velocidade para todos os emotes
+local function applyEmoteSpeed(v)
+    if not itemsFolder then return end
+    local emotesFolder = itemsFolder:FindFirstChild("Emotes")
+    if not emotesFolder then return end
+    
+    for _, module in ipairs(emotesFolder:GetChildren()) do
+        if module:IsA("ModuleScript") then
+            local ok, data = pcall(require, module)
+            if ok and data and data.EmoteInfo and data.EmoteInfo.SpeedMult ~= 0 then
+                data.EmoteInfo.SpeedMult = v
+            end
+        end
+    end
+end
+
+-- restaura velocidades originais
+local function restoreOriginal()
+    if not itemsFolder then return end
+    local emotesFolder = itemsFolder:FindFirstChild("Emotes")
+    if not emotesFolder then return end
+    
+    for _, module in ipairs(emotesFolder:GetChildren()) do
+        if module:IsA("ModuleScript") then
+            local original = originalEmoteSpeeds[module.Name]
+            if original then
+                local ok, data = pcall(require, module)
+                if ok and data and data.EmoteInfo then
+                    data.EmoteInfo.SpeedMult = original
+                end
+            end
+        end
+    end
+end
+
+-- valor atual usado no modo legit
+featureStates = featureStates or {}
+featureStates.EmoteSpeedValue = 2
+
+-- INPUT DE VELOCIDADE
+local emotespeed = MainTab:Input({
+    Title = "Emote Speed Value",
+    Description = "Changes the animation speed of your emotes",
+    Placeholder = "1500",
+    NumbersOnly = true,
+    Callback = function(value)
+        local num = tonumber(value)
+        if not num or num <= 0 then return end
+
+        featureStates.EmoteSpeedValue = num
+        local applied = num / 1000
+        applyEmoteSpeed(applied)   -- modo sempre legit
+    end
+})
+
+-- RESET
+MainTab:Button({
+    Title = "Reset Emote Speed",
+    Description = "Restore default emote speed",
+    Callback = function()
+        restoreOriginal()
+    end
+})
+
+MainTab:Space()
+
+local Section = MainTab:Section({ 
+    Title = "Moviment modifications",
+})
+-- Serviços
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
+
+-- =======================
+-- AutoJump
+-- =======================
+getgenv().AutoJumpEnabled = false
+getgenv().AutoJumpMode = "Acceleration"
+getgenv().AutoJumpAccel = -0.1
+local lastJump = 0
+
+local function applyFriction() 
+    -- opcional, sem getgc
+end
+
+local function createAutoJumpGUI()
+    -- Remove antiga
+    if PlayerGui:FindFirstChild("AutoJumpGUI") then
+        PlayerGui.AutoJumpGUI:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "AutoJumpGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = PlayerGui
+
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(0, 220, 0, 44)
+    Container.Position = getgenv().AutoJumpPosition or UDim2.new(0.5, -110, 0, 60)
+    Container.AnchorPoint = Vector2.new(0.5, 0)
+    Container.BackgroundTransparency = 1
+    Container.Parent = screenGui
+
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, 0, 1, 0)
+    Button.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    Button.BackgroundTransparency = 0.25
+    Button.Text = "AutoJump [OFF]"
+    Button.Font = Enum.Font.Gotham
+    Button.TextSize = 20
+    Button.TextColor3 = Color3.fromRGB(255,255,255)
+    Button.AutoButtonColor = false
+    Button.Parent = Container
+
+    local UICorner = Instance.new("UICorner", Button)
+    UICorner.CornerRadius = UDim.new(1,0)
+    local UIStroke = Instance.new("UIStroke", Button)
+    UIStroke.Thickness = 2
+    local UIGradient = Instance.new("UIGradient", UIStroke)
+    UIGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromHex("40c9ff")), ColorSequenceKeypoint.new(1, Color3.fromHex("e81cff"))})
+    UIGradient.Rotation = 45
+
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundTransparency = 0.1}):Play()
+    end)
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundTransparency = 0.25}):Play()
+    end)
+
+    Button.MouseButton1Click:Connect(function()
+        getgenv().AutoJumpEnabled = not getgenv().AutoJumpEnabled
+        Button.Text = "AutoJump ["..(getgenv().AutoJumpEnabled and "ON" or "OFF").."]"
+    end)
+
+    -- Drag
+    local dragging, dragInput, dragStart, startPos = false, nil, Vector2.new(), Container.Position
+    local function update(input)
+        local delta = input.Position - dragStart
+        Container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    Button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragInput = input
+            dragStart = input.Position
+            startPos = Container.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    getgenv().AutoJumpPosition = Container.Position
+                end
+            end)
+        end
+    end)
+
+    Button.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            update(input)
+        end
+    end)
+
+    screenGui.Enabled = false
+    return screenGui
+end
+
+local autoJumpGUI = createAutoJumpGUI()
+
+RunService.RenderStepped:Connect(function()
+    if not getgenv().AutoJumpEnabled then return end
+    local char = Player.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local humanoid = char.Humanoid
+        local now = tick()
+        if now - lastJump >= 0.15 then
+            lastJump = now
+            if humanoid:GetState() ~= Enum.HumanoidStateType.Jumping and humanoid:GetState() ~= Enum.HumanoidStateType.Freefall then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+        applyFriction()
+    end
+end)
+
+-- =======================
+-- AutoTrimp
+-- =======================
+getgenv().AutoTrimpEnabled = false
+getgenv().AutoTrimpSpeed = 50
+getgenv().AutoTrimpPosition = getgenv().AutoTrimpPosition or UDim2.new(0.5, -110, 0, 10)
+
+local maxExtraSpeed = 100
+local minSpeedOffset = 0
+local lastTick = tick()
+local airAccumulator = 0
+local airTotalTime = 0
+local wasAir = false
+local activeBV = nil
+local currentSpeed = getgenv().AutoTrimpSpeed
+local countingEnabled = false
+local speedometer = nil
+
+local function truncate1Decimal(val)
+    return math.floor(val * 10) / 10
+end
+
+local function getSpeedometer()
+    local ok, spd = pcall(function()
+        return Player.PlayerGui.Shared.HUD.Overlay.Default.CharacterInfo.Item.Speedometer.Players
+    end)
+    if ok then return spd end
+    return nil
+end
+
+-- Hook para não permitir que o speedometer seja sobrescrito
+local oldNewIndex
+if not oldNewIndex then
+    oldNewIndex = hookmetamethod(game, "__newindex", function(self, idx, val)
+        if not checkcaller() and countingEnabled and speedometer and self == speedometer and idx == "Text" then
+            return
+        end
+        return oldNewIndex(self, idx, val)
+    end)
+end
+
+RunService.RenderStepped:Connect(function()
+    local deltaTime = tick() - lastTick
+    lastTick = tick()
+
+    local char = Player.Character
+    if char then
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChild("Humanoid")
+        if root and humanoid then
+            speedometer = getSpeedometer()
+            local isAir = humanoid.FloorMaterial == Enum.Material.Air
+
+            -- Ao tocar o chão
+            if wasAir and not isAir then
+                currentSpeed = math.max(getgenv().AutoTrimpSpeed - minSpeedOffset, currentSpeed - 10)
+                if speedometer then speedometer.Text = tostring(truncate1Decimal(currentSpeed)) end
+                airTotalTime = 0
+            end
+            wasAir = isAir
+
+            if getgenv().AutoTrimpEnabled then
+                if isAir then
+                    airAccumulator = airAccumulator + deltaTime
+                    airTotalTime = airTotalTime + deltaTime
+                    while airAccumulator >= 0.04 do
+                        airAccumulator = airAccumulator - 0.04
+                        local increment = math.max(0.1, 2.5 * (0.04 / 1))
+                        currentSpeed = math.min(getgenv().AutoTrimpSpeed + maxExtraSpeed, currentSpeed + increment)
+                    end
+                else
+                    airAccumulator = 0
+                    currentSpeed = math.max(getgenv().AutoTrimpSpeed - minSpeedOffset, currentSpeed - 2.5 * deltaTime)
+                    airTotalTime = 0
+                end
+
+                -- Remove BV antigo
+                if activeBV then activeBV:Destroy() end
+
+                -- Cria BV horizontal ignorando Y
+                local lookDir = camera.CFrame.LookVector
+                lookDir = Vector3.new(lookDir.X, 0, lookDir.Z)
+                if lookDir.Magnitude ~= 0 then
+                    lookDir = lookDir.Unit
+                end
+
+                local bv = Instance.new("BodyVelocity")
+                bv.Velocity = lookDir * currentSpeed
+                bv.MaxForce = Vector3.new(4e5, 0, 4e5)
+                bv.P = 1250
+                bv.Parent = root
+                Debris:AddItem(bv, 0.1)
+                activeBV = bv
+
+                countingEnabled = true
+                if speedometer then speedometer.Text = tostring(truncate1Decimal(currentSpeed)) end
+            else
+                if activeBV then activeBV:Destroy() end
+                activeBV = nil
+                currentSpeed = getgenv().AutoTrimpSpeed
+                countingEnabled = false
+                airAccumulator = 0
+                airTotalTime = 0
+                wasAir = false
+            
+            end
+        end
+    end
+end)
+
+local function createAutoTrimpGUI()
+    -- Remove antiga
+    if PlayerGui:FindFirstChild("AutoTrimpGUI") then
+        PlayerGui.AutoTrimpGUI:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "AutoTrimpGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = PlayerGui
+
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(0,220,0,44)
+    Container.Position = getgenv().AutoTrimpPosition
+    Container.AnchorPoint = Vector2.new(0.5,0)
+    Container.BackgroundTransparency = 1
+    Container.Parent = screenGui
+
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1,0,1,0)
+    Button.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    Button.BackgroundTransparency = 0.25
+    Button.Text = "AutoTrimp [OFF]"
+    Button.Font = Enum.Font.Gotham
+    Button.TextSize = 20
+    Button.TextColor3 = Color3.fromRGB(255,255,255)
+    Button.AutoButtonColor = false
+    Button.Parent = Container
+
+    local UICorner = Instance.new("UICorner", Button)
+    UICorner.CornerRadius = UDim.new(1,0)
+    local UIStroke = Instance.new("UIStroke", Button)
+    UIStroke.Thickness = 2
+    local UIGradient = Instance.new("UIGradient", UIStroke)
+    UIGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromHex("40c9ff")), ColorSequenceKeypoint.new(1, Color3.fromHex("e81cff"))})
+    UIGradient.Rotation = 45
+
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundTransparency = 0.1}):Play()
+    end)
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundTransparency = 0.25}):Play()
+    end)
+
+    Button.MouseButton1Click:Connect(function()
+        getgenv().AutoTrimpEnabled = not getgenv().AutoTrimpEnabled
+        Button.Text = "AutoTrimp ["..(getgenv().AutoTrimpEnabled and "ON" or "OFF").."]"
+    end)
+
+    -- Drag
+    local dragging, dragInput, dragStart, startPos = false, nil, Vector2.new(), Container.Position
+    local function update(input)
+        local delta = input.Position - dragStart
+        Container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    Button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragInput = input
+            dragStart = input.Position
+            startPos = Container.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    getgenv().AutoTrimpPosition = Container.Position
+                end
+            end)
+        end
+    end)
+
+    Button.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            update(input)
+        end
+    end)
+
+    screenGui.Enabled = false
+    return screenGui
+end
+
+local autoTrimpGUI = createAutoTrimpGUI()
+getgenv().LagSwitchTime = 0.5
+local function createLagSwitchGUI()
+    -- Remove antiga
+    if PlayerGui:FindFirstChild("LagSwitchGUI") then
+        PlayerGui.LagSwitchGUI:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "LagSwitchGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = PlayerGui
+
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(0, 220, 0, 44)
+    container.Position = UDim2.new(0.5, -110, 0, 100)
+    container.AnchorPoint = Vector2.new(0.5, 0)
+    container.BackgroundTransparency = 1
+    container.Parent = screenGui
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 1, 0)
+    button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    button.BackgroundTransparency = 0.25
+    button.Text = "LagSwitch"
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 20
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.AutoButtonColor = false
+    button.Parent = container
+
+    local UICorner = Instance.new("UICorner", button)
+    UICorner.CornerRadius = UDim.new(1,0)
+    local UIStroke = Instance.new("UIStroke", button)
+    UIStroke.Thickness = 2
+    local UIGradient = Instance.new("UIGradient", UIStroke)
+    UIGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromHex("40c9ff")), ColorSequenceKeypoint.new(1, Color3.fromHex("e81cff"))})
+    UIGradient.Rotation = 45
+
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.1), {BackgroundTransparency = 0.1}):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.1), {BackgroundTransparency = 0.25}):Play()
+    end)
+
+    button.MouseButton1Click:Connect(function()
+        -- Executa lag switch
+        local duration = getgenv().LagSwitchTime or 0.5
+        local start = tick()
+        while tick() - start < duration do
+            for i = 1, 1e5 do local _ = i*i end
+        end
+    end)
+
+    -- Drag
+    local dragging, dragInput, dragStart, startPos = false, nil, Vector2.new(), container.Position
+    local function update(input)
+        local delta = input.Position - dragStart
+        container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragInput = input
+            dragStart = input.Position
+            startPos = container.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    button.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            update(input)
+        end
+    end)
+
+    return screenGui
+end
+
+
+-- =======================
+-- MainTab Toggles e Inputs finais
+-- =======================
+-- AutoJump Mode Dropdown
+MainTab:Dropdown({
+    Title = "AutoJump Mode",
+    Values = {"Acceleration", "No Acceleration"},
+    Multi = false,
+    Default = 1,
+    Callback = function(value)
+        if value ~= "" then
+            getgenv().AutoJumpMode = value
+        end
+    end
+})
+
+-- AutoJump GUI Toggle
+MainTab:Toggle({
+    Title = "AutoJump ",
+    Value = false,
+    Callback = function(state)
+        autoJumpGUI.Enabled = state
+        if not state then
+            getgenv().AutoJumpEnabled = false
+        end
+    end
+})
+
+
+-- AutoJump Acceleration Input
+MainTab:Input({
+    Title = "AutoJump Acceleration (Negative Only)",
+    Placeholder = "-0.5",
+    Numeric = true,
+    Callback = function(value)
+        if tostring(value):sub(1,1) == "-" then
+            getgenv().AutoJumpAccel = tonumber(value)
+        end
+    end
+})
+
+MainTab:Space()
+-- Serviços
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Variáveis globais
+getgenv().GravityEnabled = false
+getgenv().GravityValue = workspace.Gravity -- pega gravidade atual do jogo
+getgenv().GravityPosition = UDim2.new(0.5, -110, 0, 50)
+getgenv().GravityButtonConnection = nil
+
+-- Função para criar GUI flutuante estilo AutoTrimp
+local function CreateGravityGUI()
+    -- Remove GUI antiga
+    if PlayerGui:FindFirstChild("GravityGUI") then
+        PlayerGui.GravityGUI:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "GravityGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = PlayerGui
+
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(0, 220, 0, 44)
+    Container.Position = getgenv().GravityPosition
+    Container.AnchorPoint = Vector2.new(0.5,0)
+    Container.BackgroundTransparency = 1
+    Container.Parent = screenGui
+
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1,0,1,0)
+    Button.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    Button.BackgroundTransparency = 0.25
+    Button.Text = "Gravity [OFF]"
+    Button.Font = Enum.Font.Gotham
+    Button.TextSize = 20
+    Button.TextColor3 = Color3.fromRGB(255,255,255)
+    Button.AutoButtonColor = false
+    Button.Parent = Container
+
+    local UICorner = Instance.new("UICorner", Button)
+    UICorner.CornerRadius = UDim.new(1,0)
+    local UIStroke = Instance.new("UIStroke", Button)
+    UIStroke.Thickness = 2
+    local UIGradient = Instance.new("UIGradient", UIStroke)
+    UIGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromHex("40c9ff")),
+        ColorSequenceKeypoint.new(1, Color3.fromHex("e81cff"))
+    })
+    UIGradient.Rotation = 45
+
+    -- Hover Tween
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundTransparency = 0.1}):Play()
+    end)
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundTransparency = 0.25}):Play()
+    end)
+
+    -- Toggle gravidade (conexão única)
+    if getgenv().GravityButtonConnection then
+        getgenv().GravityButtonConnection:Disconnect()
+    end
+
+    getgenv().GravityButtonConnection = Button.MouseButton1Click:Connect(function()
+        getgenv().GravityEnabled = not getgenv().GravityEnabled
+        Button.Text = "Gravity ["..(getgenv().GravityEnabled and "ON" or "OFF").."]"
+
+        if getgenv().GravityEnabled then
+            workspace.Gravity = getgenv().GravityValue
+        else
+            workspace.Gravity = getgenv().GravityValue -- mantém o valor original do workspace
+            -- força pulo curto para resetar física do personagem
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.Jump = true
+                end
+            end
+        end
+    end)
+
+    -- Drag
+    local dragging, dragInput, dragStart, startPos = false, nil, Vector2.new(), Container.Position
+    local function update(input)
+        local delta = input.Position - dragStart
+        Container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    Button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragInput = input
+            dragStart = input.Position
+            startPos = Container.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    getgenv().GravityPosition = Container.Position
+                end
+            end)
+        end
+    end)
+
+    Button.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            update(input)
+        end
+    end)
+
+    screenGui.Enabled = false
+    return screenGui
+end
+
+-- Cria GUI
+local GravityGUI = CreateGravityGUI()
+
+-- Toggle no tab principal
+MainTab:Toggle({
+    Title = "Gravity GUI",
+    Value = false,
+    Callback = function(state)
+        GravityGUI.Enabled = state
+        if not state then
+            getgenv().GravityEnabled = false
+            workspace.Gravity = getgenv().GravityValue
+            -- reset curto de pulo
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.Jump = true
+                end
+            end
+        end
+    end
+})
+
+-- Input para definir valor da gravidade
+MainTab:Input({
+    Title = "Gravity Value",
+    Placeholder = tostring(getgenv().GravityValue),
+    Value = tostring(getgenv().GravityValue),
+    Callback = function(val)
+        local n = tonumber(val)
+        if n and n > 0 then
+            getgenv().GravityValue = n
+            if getgenv().GravityEnabled then
+                workspace.Gravity = n
+            end
+        end
+    end
+})
+MainTab:Space()
+-- AutoTrimp GUI Toggle
+MainTab:Toggle({
+    Title = "AutoTrimp",
+    Value = false,
+    Callback = function(state)
+        autoTrimpGUI.Enabled = state
+        if not state then
+            getgenv().AutoTrimpEnabled = false
+            if activeBV then activeBV:Destroy() activeBV = nil end
+            airAccumulator = 0
+            airTotalTime = 0
+            currentSpeed = getgenv().AutoTrimpSpeed
+            countingEnabled = false
+            if speedometer then pcall(function() speedometer.Text = "0" end) end
+        end
+    end
+})
+
+-- AutoTrimp Speed Input
+MainTab:Input({
+    Title = "AutoTrimp Speed",
+    Value = tostring(getgenv().AutoTrimpSpeed),
+    Placeholder = "Digite a velocidade",
+    Callback = function(value)
+        local num = tonumber(value)
+        if num and num > 0 then
+            getgenv().AutoTrimpSpeed = num
+            currentSpeed = num
+        end
+    end
+})
+
+MainTab:Space()
+-- LagSwitch GUI Toggle
+local lagSwitchGUI -- só declara, sem criar ainda
+MainTab:Toggle({
+    Title = "Lag Switch",
+    Value = false,
+    Callback = function(state)
+        if state then
+            if not lagSwitchGUI then
+                lagSwitchGUI = createLagSwitchGUI()
+            end
+            lagSwitchGUI.Enabled = true
+        else
+            if lagSwitchGUI then
+                lagSwitchGUI.Enabled = false
+            end
+        end
+    end
+})
+-- LagSwitch Time Input
+MainTab:Input({
+    Title = "LagSwitch delay",
+    Value = tostring(getgenv().LagSwitchTime),
+    Placeholder = "0.5",
+    Callback = function(value)
+        local num = tonumber(value)
+        if num and num > 0 then
+            getgenv().LagSwitchTime = 0.5
+        else
+            getgenv().LagSwitchTime = 0.5
+        end
+    end
+})
+MainTab:Space()
+local infiniteSlideEnabled = false
+local slideFrictionValue = -8
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local keys = {
+    "Friction","AirStrafeAcceleration","JumpHeight","RunDeaccel",
+    "JumpSpeedMultiplier","JumpCap","SprintCap","WalkSpeedMultiplier",
+    "BhopEnabled","Speed","AirAcceleration","RunAccel","SprintAcceleration"
+}
+
+local cachedTables = nil
+local plrModel = nil
+local slideConnection = nil
+
+-- Checa se uma tabela tem todas as propriedades necessárias
+local function hasAll(tbl)
+	if type(tbl) ~= "table" then return false end
+	for _, k in ipairs(keys) do
+		if rawget(tbl, k) == nil then return false end
+	end
+	return true
+end
+
+-- Pega todas as tabelas que tem essas propriedades
+local function getConfigTables()
+	local tables = {}
+	for _, obj in ipairs(getgc(true)) do
+		local success, result = pcall(function()
+			if hasAll(obj) then return obj end
+		end)
+		if success and result then
+			table.insert(tables, obj)
+		end
+	end
+	return tables
+end
+
+-- Atualiza referência do player model
+local function updatePlayerModel()
+	local GameFolder = workspace:FindFirstChild("Game")
+	local PlayersFolder = GameFolder and GameFolder:FindFirstChild("Players")
+	if PlayersFolder then
+		plrModel = PlayersFolder:FindFirstChild(LocalPlayer.Name)
+	else
+		plrModel = nil
+	end
+end
+
+-- Aplica Friction
+local function setFriction(value)
+	if not cachedTables then return end
+	for _, t in ipairs(cachedTables) do
+		pcall(function() t.Friction = value end)
+	end
+end
+
+-- Lógica do Heartbeat
+local function onHeartbeat()
+	if not plrModel then
+		setFriction(5)
+		return
+	end
+
+	local success, currentState = pcall(function()
+		return plrModel:GetAttribute("State")
+	end)
+
+	if success and currentState then
+		if currentState == "Slide" then
+			pcall(function()
+				plrModel:SetAttribute("State", "EmotingSlide")
+			end)
+		elseif currentState == "EmotingSlide" then
+			setFriction(slideFrictionValue)
+		else
+			setFriction(5)
+		end
+	else
+		setFriction(5)
+	end
+end
+
+-- Reaplica tabelas e model
+local function applyInfiniteSlide()
+	cachedTables = getConfigTables()
+	updatePlayerModel()
+end
+
+-- Reinicia o Infinite Slide: desliga e liga com delay
+local function restartInfiniteSlide()
+	if infiniteSlideEnabled then
+		infiniteSlideEnabled = false
+		setFriction(5)
+		task.wait(0.3)
+		infiniteSlideEnabled = true
+		applyInfiniteSlide()
+	end
+end
+
+-- Toggle Infinite Slide
+MainTab:Toggle({
+	Title = "Infinite Slide",
+	Value = false,
+	Callback = function(state)
+		infiniteSlideEnabled = state
+
+		if slideConnection then
+			slideConnection:Disconnect()
+			slideConnection = nil
+		end
+
+		if state then
+			applyInfiniteSlide()
+			slideConnection = RunService.Heartbeat:Connect(onHeartbeat)
+		else
+			cachedTables = nil
+			plrModel = nil
+			setFriction(5)
+		end
+	end,
+})
+
+MainTab:Space()
+
+-- Detecta CharacterAdded e reinicia se necessário
+LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(0.1)
+	restartInfiniteSlide()
+end)
+
+-- Detecta Remote ChangePlayerMode
+local EventsFolder = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Player")
+local ChangePlayerMode = EventsFolder:WaitForChild("ChangePlayerMode")
+if ChangePlayerMode and ChangePlayerMode:IsA("RemoteEvent") then
+	ChangePlayerMode.OnClientEvent:Connect(function()
+		task.wait(0.1)
+		restartInfiniteSlide()
+	end)
+end
+
+
+-- Serviços
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer    
+
+-- Estados das features
+local featureStates = { AutoSelfRevive = false, SelfReviveMethod = "Spawnpoint" }    
+
+local lastSavedPosition = nil
+local AutoSelfReviveConnection = nil
+local respawnConnection = nil
+local hasRevived = false    
+
+-- Função de revive
+local function doRevive(char)
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local isDowned = char:GetAttribute("Downed")
+    if not isDowned then return end
+
+    if featureStates.SelfReviveMethod == "Spawnpoint" then
+        if not hasRevived then
+            hasRevived = true
+            pcall(function()
+                ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
+            end)
+            task.delay(10, function() hasRevived = false end)
+        end
+    elseif featureStates.SelfReviveMethod == "Revive" then
+        if hrp then lastSavedPosition = hrp.Position end
+        task.spawn(function()
+            task.wait(3)
+            local startTime = tick()
+            repeat
+                pcall(function()
+                    ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
+                end)
+                task.wait(1)
+            until not char:GetAttribute("Downed") or (tick() - startTime > 1)
+
+            local newChar
+            repeat
+                newChar = player.Character
+                task.wait()
+            until newChar and newChar:FindFirstChild("HumanoidRootPart")
+
+            local newHRP = newChar:FindFirstChild("HumanoidRootPart")
+            if lastSavedPosition and newHRP then
+                newHRP.CFrame = CFrame.new(lastSavedPosition)
+                task.wait(0.5)
+                if (newHRP.Position - lastSavedPosition).Magnitude > 1 then
+                    lastSavedPosition = nil
+                end
+            end
+        end)
+    end    
+end    
+
+-- Setup AutoRevive
+local function setupAutoRevive(char)
+    if AutoSelfReviveConnection then AutoSelfReviveConnection:Disconnect() end
+    AutoSelfReviveConnection = char:GetAttributeChangedSignal("Downed"):Connect(function()
+        if char:GetAttribute("Downed") then doRevive(char) end
+    end)
+end    
+
+-- Monitor respawn
+if respawnConnection then respawnConnection:Disconnect() end
+respawnConnection = player.CharacterAdded:Connect(function(newChar)
+    task.wait(1)
+    if featureStates.AutoSelfRevive then setupAutoRevive(newChar) end
+end)    
+
+
+MainTab:Space()
+
+local Section = MainTab:Section({ 
+    Title = "Yourself",
+})
+
+MainTab:Space()
+-- Dropdown SelfReviveMethod
+MainTab:Dropdown({
+    Title = "Respawn Method",
+    Values = {"Spawnpoint", "Revive"},
+    Value = "Spawnpoint",
+    Callback = function(value)
+        featureStates.SelfReviveMethod = value
+    end
+})    
+
+-- Botão Manual Revive
+MainTab:Button({
+    Title = "Respawn",
+    Callback = function()
+        doRevive(player.Character)
+    end
+})    
+
+-- Inicializa AutoSelfRevive caso já esteja ativo
+if player.Character and featureStates.AutoSelfRevive then
+    setupAutoRevive(player.Character)
+end
+-- Serviços
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local INTERACT_REMOTE = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Character"):WaitForChild("Interact")
+
+-- Variáveis globais
+getgenv().AutoCarryEnabled = false
+getgenv().AutoReviveEnabled = false
+getgenv().AutoCarryDelay = 1
+getgenv().AutoReviveDelay = 1
+getgenv().AutoCarryPosition = UDim2.new(0.5, -110, 0, 50)
+getgenv().AutoRevivePosition = UDim2.new(0.5, -110, 0, 120)
+
+local lastCarryTime = 0
+local lastReviveTime = 0
+
+-- Função genérica para criar GUI flutuante estilo AutoTrimp
+local function CreateFloatingButton(name, enabledFlag, savedPosFlag, defaultPosY)
+    if PlayerGui:FindFirstChild(name.."GUI") then
+        PlayerGui[name.."GUI"]:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = name.."GUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = PlayerGui
+
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(0, 220, 0, 44)
+    Container.Position = getgenv()[savedPosFlag] or UDim2.new(0.5, -110, 0, defaultPosY)
+    Container.AnchorPoint = Vector2.new(0.5,0)
+    Container.BackgroundTransparency = 1
+    Container.Parent = screenGui
+
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1,0,1,0)
+    Button.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    Button.BackgroundTransparency = 0.25
+    Button.Text = name.." [OFF]"
+    Button.Font = Enum.Font.Gotham
+    Button.TextSize = 20
+    Button.TextColor3 = Color3.fromRGB(255,255,255)
+    Button.AutoButtonColor = false
+    Button.Parent = Container
+
+    local UICorner = Instance.new("UICorner", Button)
+    UICorner.CornerRadius = UDim.new(1,0)
+    local UIStroke = Instance.new("UIStroke", Button)
+    UIStroke.Thickness = 2
+    local UIGradient = Instance.new("UIGradient", UIStroke)
+    UIGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromHex("40c9ff")),
+        ColorSequenceKeypoint.new(1, Color3.fromHex("e81cff"))
+    })
+    UIGradient.Rotation = 45
+
+    -- Hover Tween
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundTransparency = 0.1}):Play()
+    end)
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundTransparency = 0.25}):Play()
+    end)
+
+    -- Toggle da função
+    Button.MouseButton1Click:Connect(function()
+        getgenv()[enabledFlag] = not getgenv()[enabledFlag]
+        Button.Text = name.." ["..(getgenv()[enabledFlag] and "ON" or "OFF").."]"
+    end)
+
+    -- Drag
+    local dragging, dragInput, dragStart, startPos = false, nil, Vector2.new(), Container.Position
+    local function update(input)
+        local delta = input.Position - dragStart
+        Container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    Button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragInput = input
+            dragStart = input.Position
+            startPos = Container.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    getgenv()[savedPosFlag] = Container.Position
+                end
+            end)
+        end
+    end)
+
+    Button.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            update(input)
+        end
+    end)
+
+    screenGui.Enabled = false
+    return screenGui
+end
+
+-- Criação das GUIs
+local AutoCarryGUI = CreateFloatingButton("AutoCarry", "AutoCarryEnabled", "AutoCarryPosition", 50)
+local AutoReviveGUI = CreateFloatingButton("AutoRevive", "AutoReviveEnabled", "AutoRevivePosition", 120)
+
+-- Loop de execução das funções
+RunService.RenderStepped:Connect(function()
+    if getgenv().AutoCarryEnabled then
+        local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if myHRP then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+                    local targetHRP = player.Character.HumanoidRootPart
+                    local targetHumanoid = player.Character.Humanoid
+                    if (myHRP.Position - targetHRP.Position).Magnitude <= 10 and targetHumanoid.Health <= 0 then
+                        if tick() - (getgenv().AutoCarryLast or 0) >= getgenv().AutoCarryDelay then
+                            INTERACT_REMOTE:FireServer("Carry", nil, player.Name)
+                            getgenv().AutoCarryLast = tick()
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if getgenv().AutoReviveEnabled then
+        local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if myHRP then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+                    local targetHRP = player.Character.HumanoidRootPart
+                    local targetHumanoid = player.Character.Humanoid
+                    if (myHRP.Position - targetHRP.Position).Magnitude <= 10 and targetHumanoid.Health <= 0 then
+                        if tick() - (getgenv().AutoReviveLast or 0) >= getgenv().AutoReviveDelay then
+                            INTERACT_REMOTE:FireServer("Revive", true, player.Name)
+                            getgenv().AutoReviveLast = tick()
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+MainTab:Space()
+
+local Section = MainTab:Section({ 
+    Title = "Interactions",
+})
+MainTab:Space()
+-- Toggle para abrir GUI flutuante
+MainTab:Toggle({
+    Title = "Auto Carry GUI",
+    Value = false,
+    Callback = function(state)
+        AutoCarryGUI.Enabled = state
+        if not state then
+            getgenv().AutoCarryEnabled = false
+        end
+    end
+})
+-- Inputs de delay na aba WindUI
+MainTab:Input({
+    Title = "Carry Delay (s)",
+    Placeholder = "1",
+    Value = tostring(getgenv().AutoCarryDelay),
+    Callback = function(val)
+        local n = tonumber(val)
+        if n and n > 0 then
+            getgenv().AutoCarryDelay = n
+        end
+    end
+})
+MainTab:Space()
+
+MainTab:Toggle({
+    Title = "Auto Revive GUI",
+    Value = false,
+    Callback = function(state)
+        AutoReviveGUI.Enabled = state
+        if not state then
+            getgenv().AutoReviveEnabled = false
+        end
+    end
+})
+
+
+MainTab:Input({
+    Title = "Revive Delay (s)",
+    Placeholder = "1",
+    Value = tostring(getgenv().AutoReviveDelay),
+    Callback = function(val)
+        local n = tonumber(val)
+        if n and n > 0 then
+            getgenv().AutoReviveDelay = n
+        end
+    end
+})
+
+MainTab:Space()
+
+
+MainTab:Space()
+
+-- Função genérica para criar keybind com toggle e notificação
+-- name: nome da feature (string)
+-- defaultKey: tecla padrão (string, ex: "G")
+-- callback: função que recebe o estado atual (true = ON, false = OFF)
+local function CreateFeatureKeybind(name, defaultKey, callback)
+    local enabled = false -- estado inicial
+
+    local keybind = Keybind:Keybind({
+        Title = name.." Keybind",
+        Desc = "Press the key to turn it on/off. "..name,
+        Value = defaultKey,
+        Callback = function(key)
+            enabled = not enabled
+            callback(enabled) -- chama a função passando o estado atual
+            WindUI:Notify({
+                Title = name,
+                Content = enabled and "ON" or "OFF",
+                Duration = 2,
+                Icon = "keyboard"
+            })
+        end
+    })
+
+    return keybind, function() return enabled end -- retorna keybind e função pra checar estado
+end
+
+-- ===============================
+-- Exemplo de uso com suas features
+-- ===============================
+
+-- AutoJump
+local autoJumpKeybind, isAutoJumpEnabled = CreateFeatureKeybind("AutoJump", "J", function(state)
+    getgenv().AutoJumpEnabled = state
+end)
+
+-- AutoTrimp
+local autoTrimpKeybind, isAutoTrimpEnabled = CreateFeatureKeybind("AutoTrimp", "K", function(state)
+    getgenv().AutoTrimpEnabled = state
+end)
+
+-- Gravity
+-- Guarda a gravidade original do jogo
+local originalGravity = workspace.Gravity
+
+local gravityKeybind, isGravityEnabled = CreateFeatureKeybind("Gravity", "L", function(state)
+    getgenv().GravityEnabled = state
+    workspace.Gravity = state and getgenv().GravityValue or originalGravity
+end)
+
+-- AutoCarry
+local autoCarryKeybind, isAutoCarryEnabled = CreateFeatureKeybind("AutoCarry", "U", function(state)
+    getgenv().AutoCarryEnabled = state
+end)
+
+-- AutoRevive
+local autoReviveKeybind, isAutoReviveEnabled = CreateFeatureKeybind("AutoRevive", "I", function(state)
+    getgenv().AutoReviveEnabled = state
+end)
+
+-- Infinite Slide
+local infiniteSlideKeybind, isInfiniteSlideEnabled = CreateFeatureKeybind("InfiniteSlide", "O", function(state)
+    infiniteSlideEnabled = state
+    if state then
+        applyInfiniteSlide()
+        if slideConnection then slideConnection:Disconnect() end
+        slideConnection = RunService.Heartbeat:Connect(onHeartbeat)
+    else
+        if slideConnection then slideConnection:Disconnect() slideConnection = nil end
+        setFriction(5)
+        cachedTables = nil
+        plrModel = nil
+    end
+end)
+
+
+VisualsTab:Toggle({
+    Title = "Timer Show",
+    Value = false,
+    Callback = function(state)
+        screenGui.Enabled = state
+    end,
+})
+
+local RunService = game:GetService("RunService")  
+local Lighting = game:GetService("Lighting")  
+  
+local terrainOptimized = false  
+local descendantConnection = nil  
+local originalSettings = {}  
+local invisPartsFolder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Map") and workspace.Game.Map:FindFirstChild("InvisParts")
+local invisPartsState = false  -- Variável para controlar o estado (ativo ou desativado)
+
+GameTab:Toggle({
+    Title = "Clear Invis Walls",
+    Value = false,  -- Valor inicial (desativado)
+    Callback = function(active)
+        if invisPartsFolder then
+            for _, obj in ipairs(invisPartsFolder:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    if active then
+                        obj.CanCollide = false  -- Desativa colisão quando ativado
+                    else
+                        obj.CanCollide = true  -- Restaura colisão quando desativado
+                    end
+                end
+            end
+        end
+        invisPartsState = active  -- Atualiza o estado
+    end
+})
+ 
+GameTab:Button({  
+    Title = "LowerChunks",  
+    Description = "Reduces the streaming radius for performance improvement",  
+    Callback = function()  
+        workspace.StreamingMinRadius = 200  
+        workspace.StreamingTargetRadius = 500  
+    end  
+})  
+
+GameTab:Button({  
+    Title = "DisableVSync",  
+    Description = "Disables vertical sync to allow higher FPS",  
+    Callback = function()  
+        setfpscap(9999)  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "SetFpsCapMax",  
+    Description = "Sets the FPS cap to a very high value",  
+    Callback = function()  
+        setfpscap(99999)  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "HideSkybox",  
+    Description = "Removes the skybox for better performance",  
+    Callback = function()  
+        game.Lighting.Sky = nil  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "DisableShadows",  
+    Description = "Disables all shadows in the workspace",  
+    Callback = function()  
+        for _, part in pairs(workspace:GetDescendants()) do  
+            if part:IsA("BasePart") then  
+                part.CastShadow = false  
+            end  
+        end  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "SetLowGraphics",  
+    Description = "Sets the rendering quality to low",  
+    Callback = function()  
+        settings().Rendering.QualityLevel = 1  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "DisableParticles",  
+    Description = "Removes all particle effects from the game",  
+    Callback = function()  
+        for _, particle in pairs(workspace:GetDescendants()) do  
+            if particle:IsA("ParticleEmitter") then  
+                particle:Destroy()  
+            end  
+        end  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "Night",  
+    Description = "Sets the time to night (00:00)",  
+    Callback = function()  
+        game.Lighting.TimeOfDay = "00:00:00"  
+    end  
+})  
+
+GameTab:Button({  
+    Title = "Day",  
+    Description = "Sets the time to morning (08:00)",  
+    Callback = function()  
+        game.Lighting.TimeOfDay = "08:00:00"  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "AntiFog",  
+    Description = "Removes fog for better visibility",  
+    Callback = function()  
+        local L = game.Lighting  
+        L.FogStart = 1e5  
+        L.FogEnd = 1e6  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "LowPolyMode",  
+    Description = "Converts meshes to low-poly for performance",  
+    Callback = function()  
+        for _, p in pairs(workspace:GetDescendants()) do  
+            if p:IsA("MeshPart") or p:IsA("UnionOperation") then  
+                p.Material = Enum.Material.Plastic  
+                p.RenderFidelity = Enum.RenderFidelity.Performance  
+            end  
+        end  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "DisableSimplifyLighting",  
+    Description = "Disables lighting simplifications for custom settings",  
+    Callback = function()  
+        local L = game.Lighting  
+        L.Technology = Enum.Technology.Compatibility  
+        L.ShadowSoftness = 0  
+        L.EnvironmentDiffuseScale = 0  
+        L.EnvironmentSpecularScale = 0  
+    end  
+})  
+
+GameTab:Button({  
+    Title = "HideUselessChunks",  
+    Description = "Reduces streaming of unnecessary chunks",  
+    Callback = function()  
+        workspace.StreamingMinRadius = 0  
+        workspace.StreamingTargetRadius = 500  
+    end  
+})  
+
+
+GameTab:Button({  
+    Title = "ReduceAntiAliasing",  
+    Description = "Reduces anti-aliasing for performance",  
+    Callback = function()  
+        game:GetService("Rendering"):SetCore("AntiAliasing", Enum.AntiAliasingLevel.Two)  
+    end  
+})
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Mesh IDs e cores
+local HEADLESS_MESH_ID = "rbxassetid://1095708"
+local KORBLOX_MESH_ID = "rbxassetid://101851696"
+local KORBLOX_COLOR = Color3.fromRGB(50, 50, 50)
+
+-- Estado
+local headlessEnabled = false
+local korbloxEnabled = false
+
+-- Armazena meshes e cores originais
+local headlessMesh
+local originalLegColor
+
+-- === Funções Headless ===
+local function applyHeadless(head)
+	if not head then return end
+	head.Transparency = 1
+	head.CanCollide = false
+
+	local face = head:FindFirstChild("face")
+	if face then face:Destroy() end
+
+	headlessMesh = Instance.new("SpecialMesh")
+	headlessMesh.MeshType = Enum.MeshType.FileMesh
+	headlessMesh.MeshId = HEADLESS_MESH_ID
+	headlessMesh.Scale = Vector3.new(0.001, 0.001, 0.001)
+	headlessMesh.Parent = head
+end
+
+local function removeHeadless(head)
+	if not head then return end
+	if headlessMesh then
+		headlessMesh:Destroy()
+		headlessMesh = nil
+	end
+	head.Transparency = 0
+	head.CanCollide = true
+end
+
+-- === Funções Korblox ===
+local function applyKorblox(character)
+	local rightLeg = character:FindFirstChild("Right Leg") or character:FindFirstChild("RightUpperLeg")
+	if not rightLeg then return end
+
+	-- Salva a cor original caso ainda não tenha salvo
+	if not originalLegColor then
+		originalLegColor = rightLeg.Color
+	end
+
+	-- Remove meshes existentes
+	for _, child in ipairs(rightLeg:GetChildren()) do
+		if child:IsA("SpecialMesh") or child:IsA("CharacterMesh") then
+			child:Destroy()
+		end
+	end
+
+	-- Aplica cor e mesh Korblox
+	rightLeg.Color = KORBLOX_COLOR
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.FileMesh
+	mesh.MeshId = KORBLOX_MESH_ID
+	mesh.Scale = Vector3.new(1, 1, 1)
+	mesh.Parent = rightLeg
+end
+
+local function removeKorblox(character)
+	local rightLeg = character:FindFirstChild("Right Leg") or character:FindFirstChild("RightUpperLeg")
+	if not rightLeg then return end
+
+	-- Remove meshes Korblox
+	for _, child in ipairs(rightLeg:GetChildren()) do
+		if child:IsA("SpecialMesh") or child:IsA("CharacterMesh") then
+			child:Destroy()
+		end
+	end
+
+	-- Restaura a cor original
+	if originalLegColor then
+		rightLeg.Color = originalLegColor
+		originalLegColor = nil
+	end
+end
+
+-- === Reconectar no respawn ===
+player.CharacterAdded:Connect(function(char)
+	task.wait(0.5)
+	local head = char:FindFirstChild("Head")
+	if headlessEnabled then
+		applyHeadless(head)
+	end
+	if korbloxEnabled then
+		applyKorblox(char)
+	end
+end)
+
+-- === Toggles ===
+VisualTab:Toggle({
+	Title = "Headless",
+	Default = false,
+	Callback = function(state)
+		headlessEnabled = state
+		local char = player.Character or player.CharacterAdded:Wait()
+		local head = char:FindFirstChild("Head")
+		if state then
+			applyHeadless(head)
+		else
+			removeHeadless(head)
+		end
+	end
+})
+
+VisualTab:Toggle({
+	Title = "Korblox",
+	Default = false,
+	Callback = function(state)
+		korbloxEnabled = state
+		local char = player.Character or player.CharacterAdded:Wait()
+		if state then
+			applyKorblox(char)
+		else
+			removeKorblox(char)
+		end
+	end
+})
+local cosmetic1, cosmetic2 = ""  
+VisualTab:Space()  
+VisualTab:Divider()  
+  
+  
+VisualTab:Input({  
+Title = "Cosmetic 1",  
+Placeholder = "Enter Current Cosmetic",  
+Callback = function(v) cosmetic1 = v end  
+})  
+  
+VisualTab:Input({  
+Title = "Cosmetic 2",  
+Placeholder = "Enter Select Cosmetic",  
+Callback = function(v) cosmetic2 = v end  
+})  
+  
+VisualTab:Button({  
+Title = "Apply Cosmetics",  
+Callback = function()  
+pcall(function()  
+if cosmetic1 == "" or cosmetic2 == "" or cosmetic1 == cosmetic2 then return end  
+  
+local ReplicatedStorage = game:GetService("ReplicatedStorage")    
+        local Cosmetics = ReplicatedStorage:WaitForChild("Items"):WaitForChild("Cosmetics")    
+  
+        local function normalize(str)    
+            return str:gsub("%s+", ""):lower()    
+        end    
+  
+        local function levenshtein(s, t)    
+            local m, n = #s, #t    
+            local d = {}    
+            for i = 0, m do d[i] = {[0] = i} end    
+            for j = 0, n do d[0][j] = j end    
+  
+            for i = 1, m do    
+                for j = 1, n do    
+                    local cost = (s:sub(i,i) == t:sub(j,j)) and 0 or 1    
+                    d[i][j] = math.min(    
+                        d[i-1][j] + 1,    
+                        d[i][j-1] + 1,    
+                        d[i-1][j-1] + cost    
+                    )    
+                end    
+            end    
+            return d[m][n]    
+        end    
+  
+        local function similarity(s, t)    
+            local nS, nT = normalize(s), normalize(t)    
+            local dist = levenshtein(nS, nT)    
+            return 1 - dist / math.max(#nS, #nT)    
+        end    
+  
+        local function findSimilar(name)    
+            local bestMatch = name    
+            local bestScore = 0.5    
+            for _, c in ipairs(Cosmetics:GetChildren()) do    
+                local score = similarity(name, c.Name)    
+                if score > bestScore then    
+                    bestScore = score    
+                    bestMatch = c.Name    
+                end    
+            end    
+            return bestMatch    
+        end    
+  
+        cosmetic1 = findSimilar(cosmetic1)    
+        cosmetic2 = findSimilar(cosmetic2)    
+  
+        local a = Cosmetics:FindFirstChild(cosmetic1)    
+        local b = Cosmetics:FindFirstChild(cosmetic2)    
+        if not a or not b then return end    
+  
+        local tempRoot = Instance.new("Folder", Cosmetics)    
+        tempRoot.Name = "__temp_swap_" .. tostring(tick()):gsub("%.", "_")    
+  
+        local tempA = Instance.new("Folder", tempRoot)    
+        local tempB = Instance.new("Folder", tempRoot)    
+  
+        for _, c in ipairs(a:GetChildren()) do c.Parent = tempA end    
+        for _, c in ipairs(b:GetChildren()) do c.Parent = tempB end    
+  
+        for _, c in ipairs(tempA:GetChildren()) do c.Parent = b end    
+        for _, c in ipairs(tempB:GetChildren()) do c.Parent = a end    
+  
+        tempRoot:Destroy()    
+    end)    
+end  
+  
+})
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local localPlayer = Players.LocalPlayer
+
+local highlights = {}
+local connections = {}
+
+-- Cria ou atualiza BillboardGui
+local function createBillboard(parent, text, color)
+    local existing = parent:FindFirstChild("ESP_Billboard")
+    if existing then
+        local label = existing:FindFirstChildWhichIsA("TextLabel")
+        if label then
+            label.Text = text
+            label.TextColor3 = color
+        end
+        return existing, label
+    end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Billboard"
+    billboard.Adornee = parent
+    billboard.Size = UDim2.new(0,200,0,40)
+    billboard.StudsOffset = Vector3.new(0,2,0)
+    billboard.AlwaysOnTop = true
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1,0,1,0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.Text = text
+    label.Parent = billboard
+
+    billboard.Parent = parent
+    return billboard, label
+end
+
+-- ==================== PLAYER + DOWNED ESP ====================
+VisualsTab:Toggle({
+    Title = "Player ESP",
+    Description = "Highlights alive players; shows Downed ESP if dead",
+    Default = false,
+    Callback = function(enabled)
+        if not enabled then
+            if connections.Player then connections.Player:Disconnect() connections.Player = nil end
+            for _, data in pairs(highlights.Player or {}) do
+                if data.Billboard then data.Billboard:Destroy() end
+            end
+            highlights.Player = {}
+            if highlights.Downed then
+                for _, data in pairs(highlights.Downed) do
+                    if data.Billboard then data.Billboard:Destroy() end
+                end
+            end
+            highlights.Downed = {}
+            return
+        end
+
+        highlights.Player = highlights.Player or {}
+        highlights.Downed = highlights.Downed or {}
+
+        local function updateESP(plr)
+            local char = plr.Character
+            if not char then return end
+            local hum = char:FindFirstChild("Humanoid")
+            if not hum then return end
+            local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
+            if not root then return end
+
+            local dist = 0
+            if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                dist = (root.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
+            end
+            local text = plr.Name.." | "..math.floor(dist).." studs"
+
+            -- Se downed
+            if hum.Health <= 0 then
+                -- Remove Player ESP se existir
+                if highlights.Player[plr] and highlights.Player[plr].Billboard then
+                    highlights.Player[plr].Billboard:Destroy()
+                    highlights.Player[plr] = nil
+                end
+                -- Cria Downed ESP se não existir
+                if not highlights.Downed[plr] then
+                    local billboard, label = createBillboard(root, text, Color3.fromRGB(255,0,0))
+                    highlights.Downed[plr] = {Billboard=billboard, Label=label, Character=char}
+                else
+                    local label = highlights.Downed[plr].Label
+                    label.Text = text
+                end
+            else
+                -- Remove Downed ESP se existir
+                if highlights.Downed[plr] and highlights.Downed[plr].Billboard then
+                    highlights.Downed[plr].Billboard:Destroy()
+                    highlights.Downed[plr] = nil
+                end
+                -- Cria Player ESP se não existir
+                if not highlights.Player[plr] then
+                    local billboard, label = createBillboard(root, text, Color3.fromRGB(255,255,255))
+                    highlights.Player[plr] = {Billboard=billboard, Label=label, Character=char}
+                else
+                    local label = highlights.Player[plr].Label
+                    label.Text = text
+                end
+            end
+        end
+
+        connections.Player = RunService.Heartbeat:Connect(function()
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= localPlayer then
+                    updateESP(plr)
+                end
+            end
+        end)
+    end
+})
+
+-- ==================== TOKEN ESP ====================
+VisualsTab:Toggle({
+    Title = "Token ESP",
+    Description = "Highlights all tokens",
+    Default = false,
+    Callback = function(enabled)
+        local folder = Workspace:WaitForChild("Game"):WaitForChild("Effects"):WaitForChild("Tickets")
+        if not enabled then
+            if connections.Token then connections.Token:Disconnect() connections.Token=nil end
+            for _, data in pairs(highlights.Token or {}) do
+                if data.Billboard then data.Billboard:Destroy() end
+            end
+            highlights.Token = {}
+            return
+        end
+
+        highlights.Token = highlights.Token or {}
+
+        local function applyToken(token)
+            local part = token:FindFirstChildWhichIsA("BasePart")
+            if not part then return end
+            if not highlights.Token[token] then
+                local billboard, label = createBillboard(part, "Token", Color3.fromRGB(255,215,0))
+                highlights.Token[token] = {Billboard=billboard, Label=label, Object=token}
+            end
+        end
+
+        connections.Token = RunService.Heartbeat:Connect(function()
+            for _, token in ipairs(folder:GetChildren()) do
+                if token:IsA("Model") then
+                    applyToken(token)
+                end
+            end
+        end)
+    end
+})
+
+-- ==================== NEXTBOX ESP ====================
+VisualsTab:Toggle({
+    Title = "NextBot ESP",
+    Description = "Displays name and distance with highlight",
+    Default = false,
+    Callback = function(enabled)
+        local folder = Workspace:WaitForChild("Game"):WaitForChild("Players")
+        if not enabled then
+            if connections.NextBox then connections.NextBox:Disconnect() connections.NextBox=nil end
+            for _, data in pairs(highlights.NextBox or {}) do
+                if data.Billboard then data.Billboard:Destroy() end
+            end
+            highlights.NextBox = {}
+            return
+        end
+
+        highlights.NextBox = highlights.NextBox or {}
+
+        local function applyNextBox(obj)
+            local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+            if not part then return end
+            local dist = 0
+            if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                dist = (part.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
+            end
+            local text = obj.Name.." | "..math.floor(dist).." studs"
+
+            if not highlights.NextBox[obj] then
+                local billboard, label = createBillboard(part, text, Color3.fromRGB(0,255,255))
+                highlights.NextBox[obj] = {Billboard=billboard, Label=label, Object=obj}
+            else
+                highlights.NextBox[obj].Label.Text = text
+            end
+        end
+
+        connections.NextBox = RunService.Heartbeat:Connect(function()
+            for _, obj in ipairs(folder:GetChildren()) do
+                if obj:IsA("Model") and not Players:FindFirstChild(obj.Name) then
+                    applyNextBox(obj)
+                end
+            end
+        end)
+    end
+})
+VisualTab:Divider()
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+-- 
+local Events = ReplicatedStorage:WaitForChild("Events",10)
+local CharacterFolder = Events:WaitForChild("Character",10)
+local EmoteRemote = CharacterFolder:WaitForChild("Emote",10)
+local PassCharacterInfo = CharacterFolder:WaitForChild("PassCharacterInfo",10)
+local remoteSignal = PassCharacterInfo and PassCharacterInfo.OnClientEvent
+
+
+local currentTag = nil
+local currentEmotes = table.create(12,"")
+local selectEmotes = table.create(12,"")
+local emoteEnabled = table.create(12,false)
+local pendingSlot = nil
+local blockOriginalEmote = false
+
+-- zumbie id anims, only zumbie stride//
+local classicIDs = {
+    "rbxassetid://73383479205643",
+    "rbxassetid://84248734120911",
+    "rbxassetid://125497596837433"
+}
+local normalIDs = {
+    "rbxassetid://15221552726",
+    "rbxassetid://15221548816",
+    "rbxassetid://15221544236"
+}
+
+local function readTagFromFolder(f)
+    if not f then return nil end
+    local a=f:GetAttribute("Tag")
+    if a~=nil then return a end
+    local o=f:FindFirstChild("Tag")
+    if o and o:IsA("ValueBase") then return o.Value end
+    return nil
+end
+
+local function onRespawn()
+    currentTag=nil
+    pendingSlot=nil
+    task.spawn(function()
+        local start=tick()
+        while tick()-start<10 do
+            if workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players") then
+                local pf=workspace.Game.Players:FindFirstChild(player.Name)
+                if pf then
+                    currentTag=readTagFromFolder(pf)
+                    if currentTag then
+                        local b=tonumber(currentTag)
+                        if b and b>=0 and b<=255 then break else currentTag=nil end
+                    end
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+end
+
+local function fireSelect(slot)
+    if not currentTag then return end
+    local b=tonumber(currentTag)
+    if not b or b<0 or b>255 then return end
+    if not selectEmotes[slot] or selectEmotes[slot]=="" then return end
+    local buf=buffer.create(2)
+    buffer.writeu8(buf,0,b)
+    buffer.writeu8(buf,1,17)
+    if remoteSignal then
+        firesignal(remoteSignal,buf,{selectEmotes[slot]})
+    end
+end
+
+
+local oldNamecall
+oldNamecall = hookmetamethod(game,"__namecall",function(self,...)
+    local method = getnamecallmethod()
+    local args = {...}
+
+    if method=="FireServer" and self==EmoteRemote and type(args[1])=="string" then
+        for i=1,12 do
+            if emoteEnabled[i] and currentEmotes[i]~="" and args[1]==currentEmotes[i] then
+                pendingSlot=i
+                blockOriginalEmote=true
+
+                task.spawn(function()
+                    task.wait(0.1)
+                    blockOriginalEmote=false
+                    if pendingSlot==i then
+                        pendingSlot=nil
+                        fireSelect(i)
+                    end
+                end)
+
+                if blockOriginalEmote then return nil end
+            end
+        end
+    end
+
+    return oldNamecall(self,...)
+end)
+
+-- Respawn
+if player.Character then task.spawn(onRespawn) end
+player.CharacterAdded:Connect(function() task.wait(1) onRespawn() end)
+
+if workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players") then
+    workspace.Game.Players.ChildAdded:Connect(function(child)
+        if child.Name==player.Name then task.wait(0.5) onRespawn() end
+    end)
+    workspace.Game.Players.ChildRemoved:Connect(function(child)
+        if child.Name==player.Name then currentTag=nil pendingSlot=nil end
+    end)
+end
+
+
+for i=1,12 do
+    VisualTab:Input({
+        Title="Current Emote "..i,
+        Placeholder="Enter current emote name",
+        Value=currentEmotes[i],
+        Callback=function(v)
+            local n=v:gsub("%s+","")
+            local best=nil
+            for _,e in ipairs(ReplicatedStorage.Items.Emotes:GetChildren()) do
+                if e.Name:lower():find(n:lower()) then best=e.Name break end
+            end
+            if best then currentEmotes[i]=best end
+        end
+    })
+    VisualTab:Input({
+        Title="Select Emote "..i,
+        Placeholder="Enter select emote name",
+        Value=selectEmotes[i],
+        Callback=function(v)
+            local n=v:gsub("%s+","")
+            local best=nil
+            for _,e in ipairs(ReplicatedStorage.Items.Emotes:GetChildren()) do
+                if e.Name:lower():find(n:lower()) then best=e.Name break end
+            end
+            if best then selectEmotes[i]=best end
+        end
+    })
+    VisualTab:Button({
+        Title="Apply Slot "..i,
+        Icon="refresh-cw",
+        Callback=function()
+            emoteEnabled[i]=(currentEmotes[i]~="" and selectEmotes[i]~="")
+            WindUI:Notify({Title="Emote Changer",Content="Slot "..i.." applied!"})
+        end
+    })
+    VisualTab:Divider()
+end
+
+VisualTab:Button({
+    Title="Reset All Emotes",
+    Icon="trash-2",
+    Callback=function()
+        for i=1,12 do currentEmotes[i]="" selectEmotes[i]="" emoteEnabled[i]=false end
+        WindUI:Notify({Title="Emote Changer",Content="All emotes reset!"})
+    end
+})
+
+local zombie = ReplicatedStorage.Items.Emotes:FindFirstChild("ZombieStride")
+if zombie then
+    
+    if zombie:FindFirstChild("EmoteModule") then zombie.EmoteModule:Destroy() end
+    if zombie:FindFirstChild("EmoteModuleClassic") then zombie.EmoteModuleClassic:Destroy() end
+
+    spawn(function()
+        while true do
+            if zombie:FindFirstChild("Animation") then
+                zombie.Animation.AnimationId = normalIDs[math.random(1,#normalIDs)]
+            end
+            if zombie:FindFirstChild("AnimationClassic") then
+                zombie.AnimationClassic.AnimationId = classicIDs[math.random(1,#classicIDs)]
+            end
+            task.wait(1) 
+        end
+    end)
+end
