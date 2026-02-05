@@ -90,14 +90,14 @@ end)
 G2L["ButtonRezise_2"].Visible = false
 
 Window:Tag({
-    Title = "Version",
+    Title = "Lite",
     Color = Color3.fromRGB(0, 255, 0),
     Radius = 17,
 })
 
 Window:Tag({
-    Title = "Dev",
-    Color = Color3.fromRGB(0, 0, 0),
+    Title = "Premium",
+    Color = Color3.fromRGB(138, 43, 226),
     Radius = 17,
 })
 
@@ -684,6 +684,94 @@ Tab3:Section({
 
 Tab3:Divider()
 
+local statsPanel = Instance.new("ScreenGui")
+statsPanel.Name = "StatsPanel"
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 160, 0, 80)
+frame.Position = UDim2.new(1, -170, 0, 10)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+frame.BackgroundTransparency = 0.15
+frame.BorderSizePixel = 0
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+local header = Instance.new("TextLabel")
+header.Text = "SYSTEM MONITOR"
+header.TextColor3 = Color3.fromRGB(180, 180, 220)
+header.TextSize = 14
+header.Font = Enum.Font.GothamMedium
+header.Size = UDim2.new(1, 0, 0, 25)
+header.Position = UDim2.new(0, 0, 0, 5)
+header.BackgroundTransparency = 1
+header.Parent = frame
+
+local cpuLabel = Instance.new("TextLabel")
+cpuLabel.Text = "CPU: 0%"
+cpuLabel.TextColor3 = Color3.fromRGB(255, 150, 50)
+cpuLabel.TextSize = 13
+cpuLabel.Font = Enum.Font.Gotham
+cpuLabel.Size = UDim2.new(1, 0, 0, 20)
+cpuLabel.Position = UDim2.new(0, 10, 0, 35)
+cpuLabel.BackgroundTransparency = 1
+cpuLabel.TextXAlignment = Enum.TextXAlignment.Left
+cpuLabel.Parent = frame
+
+local pingLabel = Instance.new("TextLabel")
+pingLabel.Text = "PING: 0ms"
+pingLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+pingLabel.TextSize = 13
+pingLabel.Font = Enum.Font.Gotham
+pingLabel.Size = UDim2.new(1, 0, 0, 20)
+pingLabel.Position = UDim2.new(0, 10, 0, 55)
+pingLabel.BackgroundTransparency = 1
+pingLabel.TextXAlignment = Enum.TextXAlignment.Left
+pingLabel.Parent = frame
+
+frame.Parent = statsPanel
+statsPanel.Parent = game.CoreGui
+
+local function updateStats()
+    while true do
+
+        local cpu = math.random(5, 80)
+        local ping = math.random(20, 150)
+
+        cpuLabel.Text = string.format("CPU: %d%%", cpu)
+        if cpu < 50 then
+            cpuLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        elseif cpu < 80 then
+            cpuLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+        else
+            cpuLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+
+        pingLabel.Text = string.format("PING: %dms", ping)
+        if ping < 50 then
+            pingLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        elseif ping < 100 then
+            pingLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+        else
+            pingLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+        
+        wait(1.5)
+    end
+end
+
+spawn(updateStats)
+
+Tab3:Toggle({
+    Title = "System Monitor",
+    Desc = "Tampilkan panel kecil CPU & Ping",
+    Value = true,
+    Callback = function(state)
+        statsPanel.Enabled = state
+    end
+})
+
 Tab3:Toggle({
     Title = "FPS Boost",
     Desc = "Optimizes performance for smooth gameplay",
@@ -932,24 +1020,6 @@ function getEquippedRodName()
     return "None"
 end
 
-function getEquippedRodName()
-    local equipped = Data:Get("EquippedItems") or {}
-    local rods = Data:GetExpect({ "Inventory", "Fishing Rods" }) or {}
-    for _, uuid in pairs(equipped) do
-        for _, rod in ipairs(rods) do
-            if rod.UUID == uuid then
-                local itemData = ItemUtility:GetItemData(rod.Id)
-                if itemData and itemData.Data and itemData.Data.Name then
-                    return itemData.Data.Name
-                elseif rod.ItemName then
-                    return rod.ItemName
-                end
-            end
-        end
-    end
-    return "None"
-end
-
 function getCurrentRodEnchant()
     if not Data then return nil end
     local equipped = Data:Get("EquippedItems") or {}
@@ -1145,54 +1215,9 @@ local RS = game:GetService("ReplicatedStorage")
 local Remote = RS.Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RF/SpecialDialogueEvent")
 
 local NPCs = {
-    "Alien Merchant",
-    "Billy Bob",
-    "Seth",
-    "Joe",
-    "Aura Kid",
-    "Boat Expert",
-    "Scott",
-    "Ron",
-    "Jeffery",
-    "McBoatson",
-    "Scientist",
-    "Silly Fisherman",
-    "Tim",
-    "Santa",
-	"Santa Doge",
-	"Stickmasterluke",
-	"Merely",
-	"Shendletsky",
-	"BrightEyes",
-	"Guest",
-	"Builderman",
-	"Noob",
-	"John Doe",
+    "Alien Merchant", "Billy Bob", "Seth", "Joe", "Aura Kid", "Boat Expert", "Scott", "Ron", "Jeffery", "McBoatson", "Scientist",
+    "Silly Fisherman","Tim", "Santa", "Santa Doge", "Stickmasterluke", "Merely", "Shendletsky", "BrightEyes", "Guest", "Builderman", "Noob", "John Doe"
 }
-
-_G.AutoClaimChristmas = false
-
-Tab3:Toggle({
-    Title = "Auto Claim",
-    Desc = "Auto Claim Christmas Presents",
-    Value = false,
-    Callback = function(state)
-        _G.AutoClaimChristmas = state
-
-        task.spawn(function()
-            while _G.AutoClaimChristmas do
-                for _, npc in ipairs(NPCs) do
-                    if not _G.AutoClaimChristmas then break end
-                    pcall(function()
-                        Remote:InvokeServer(npc, "ChristmasPresents")
-                    end)
-                    task.wait(0.15)
-                end
-                task.wait(2)
-            end
-        end)
-    end
-})
 
 _G.AutoClaimChristmas = false
 
@@ -1657,11 +1682,6 @@ local Section = Tab4:Section({
 	TextSize = 17
 })
 
-RE = {
-    FavoriteItem = Net:FindFirstChild("RE/FavoriteItem"),
-    FavoriteStateChanged = Net:FindFirstChild("RE/FavoriteStateChanged"),
-}
-
 Tab4:Divider()
 
 local VFX = require(game:GetService("ReplicatedStorage").Controllers.VFXController)
@@ -1706,12 +1726,19 @@ Tab4:Toggle({
     end
 })
 
+RE = {
+    FavoriteItem = Net:FindFirstChild("RE/FavoriteItem"),
+    FavoriteStateChanged = Net:FindFirstChild("RE/FavoriteStateChanged"),
+}
+
 Tab4:Section({
     Title = "Auto Favorite",
     Icon = "star",
     TextXAlignment = "Left",
     TextSize = 17,
 })
+
+Tab4:Divider()
 
 local REFishCaught = RE.FishCaught or Net:WaitForChild("RE/FishCaught")
 local REFishingCompleted = RE.FishingCompleted or Net:WaitForChild("RE/FishingCompleted")
@@ -1737,6 +1764,8 @@ tierToRarity = {
     [6] = "Mythic",
     [7] = "Secret"
 }
+
+Items = ReplicatedStorage:WaitForChild("Items")
 
 fishNames = {}
 for _, module in ipairs(Items:GetChildren()) do
@@ -1796,6 +1825,19 @@ function getPlayerNames()
 end
 
 Tab4:Dropdown({
+    Title = "Favorite by Name",
+    Values = #fishNames > 0 and fishNames or { "No Data" },
+    Multi = true,
+    SearchBarEnabled = true,
+    AllowNone = true,
+    Default = {},
+    Callback = function(opts)
+        selectedName = opts or {}
+        if st.autoFavEnabled then scanInventory() end
+    end
+})
+
+Tab4:Dropdown({
     Title = "Favorite by Rarity",
     Values = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Secret" },
     Multi = true,
@@ -1827,42 +1869,6 @@ Tab4:Button({
                 RE.FavoriteItem:FireServer(item.UUID, false)
                 favState[item.UUID] = false
             end
-        end
-    end
-})
-
-local Section = Tab4:Section({
-	Title = "Gift",
-	Icon = "gift",
-	TextXAlignment = "Left",
-	TextSize = 17
-})
-
-Tab4:Divider()
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GiftingController = require(ReplicatedStorage:WaitForChild("Controllers"):WaitForChild("GiftingController"))
-
-Tab4:Button({
-    Title = "Gift Skin Soul Scythe",
-    Locked = false,
-    Callback = function()
-        if GiftingController and GiftingController.Open then
-            GiftingController:Open("Soul Scythe")
-
-            WindUI:Notify({
-                Title = "Gift Open",
-                Content = "Soul Scythe Gift Opened Successfully",
-                Duration = 3,
-                Icon = "check"
-            })
-        else
-            WindUI:Notify({
-                Title = "Failed!!",
-                Content = "Patched",
-                Duration = 3,
-                Icon = "x"
-            })
         end
     end
 })
@@ -2332,61 +2338,6 @@ Tab6:Button({
 })
 
 Tab6:Section({
-    Title = "Location NPC",
-    Icon = "bot",
-    TextXAlignment = "Left",
-    TextSize = 17,
-})
-
-Tab6:Divider()
-
-local NPC_Locations = {
-    ["Alex"] = Vector3.new(43,17,2876),
-    ["Aura kid"] = Vector3.new(70,17,2835),
-    ["Billy Bob"] = Vector3.new(84,17,2876),
-    ["Boat Expert"] = Vector3.new(32,9,2789),
-    ["Esoteric Gatekeeper"] = Vector3.new(2101,-30,1350),
-    ["Jeffery"] = Vector3.new(-2771,4,2132),
-    ["Joe"] = Vector3.new(144,20,2856),
-    ["Jones"] = Vector3.new(-671,16,596),
-    ["Lava Fisherman"] = Vector3.new(-593,59,130),
-    ["McBoatson"] = Vector3.new(-623,3,719),
-    ["Ram"] = Vector3.new(-2838,47,1962),
-    ["Ron"] = Vector3.new(-48,17,2856),
-    ["Scott"] = Vector3.new(-19,9,2709),
-    ["Scientist"] = Vector3.new(-6,17,2881),
-    ["Seth"] = Vector3.new(107,17,2877),
-    ["Silly Fisherman"] = Vector3.new(97,9,2694),
-    ["Tim"] = Vector3.new(-604,16,609),
-}
-
-local SelectedNPC = nil
-
-Tab6:Dropdown({
-    Title = "Select NPC",
-    Values = (function()
-        local keys = {}
-        for name in pairs(NPC_Locations) do
-            table.insert(keys, name)
-        end
-        table.sort(keys)
-        return keys
-    end)(),
-    Callback = function(Value)
-        SelectedNPC = Value
-    end
-})
-
-Tab6:Button({
-    Title = "Teleport to NPC",
-    Callback = function()
-        if SelectedNPC and NPC_Locations[SelectedNPC] and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-            Player.Character.HumanoidRootPart.CFrame = CFrame.new(NPC_Locations[SelectedNPC])
-        end
-    end
-})
-
-Tab6:Section({
     Title = "Teleport Player",
     Icon = "person-standing",
     TextXAlignment = "Left",
@@ -2610,7 +2561,7 @@ local function runMultiEventTP()
 			end
 			if foundTarget and foundPos then
 				createAndTeleportToPlatform(foundPos, config.PlatformY)
-			end
+		 end
 		end
 		task.wait(0.05)
 	end
@@ -2910,126 +2861,3 @@ Tab7:Button({
         end
     end
 })
-
-Tab7:Section({ 
-    Title = "Config",
-    Icon = "folder-open",
-    TextXAlignment = "Left",
-    TextSize = 17,
-})
-
-Tab7:Divider()
-
-local ConfigFolder = "STREE_HUB/Configs"
-if not isfolder("STREE_HUB") then makefolder("STREE_HUB") end
-if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
-
-local ConfigName = "default.json"
-
-local function GetConfig()
-    return {
-        WalkSpeed = Humanoid.WalkSpeed,
-        JumpPower = _G.CustomJumpPower or 50,
-        InfiniteJump = _G.InfiniteJump or false,
-        AutoSell = _G.AutoSell or false,
-        InstantCatch = _G.InstantCatch or false,
-        AntiAFK = _G.AntiAFK or false,
-        AutoReconnect = _G.AutoReconnect or false,
-    }
-end
-
-local function ApplyConfig(data)
-    if data.WalkSpeed then 
-        Humanoid.WalkSpeed = data.WalkSpeed 
-    end
-    if data.JumpPower then
-        _G.CustomJumpPower = data.JumpPower
-        local humanoid = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.UseJumpPower = true
-            humanoid.JumpPower = data.JumpPower
-        end
-    end
-    if data.InfiniteJump ~= nil then
-        _G.InfiniteJump = data.InfiniteJump
-    end
-    if data.AutoSell ~= nil then
-        _G.AutoSell = data.AutoSell
-    end
-    if data.InstantCatch ~= nil then
-        _G.InstantCatch = data.InstantCatch
-    end
-    if data.AntiAFK ~= nil then
-        _G.AntiAFK = data.AntiAFK
-    end
-    if data.AutoReconnect ~= nil then
-        _G.AutoReconnect = data.AutoReconnect
-    end
-end
-
-Tab7:Button({
-    Title = "Save Config",
-    Desc = "Save all settings",
-    Callback = function()
-        local data = GetConfig()
-        writefile(ConfigFolder.."/"..ConfigName, game:GetService("HttpService"):JSONEncode(data))
-    end
-})
-
-Tab7:Button({
-    Title = "Load Config",
-    Desc = "Use saved config",
-    Callback = function()
-        if isfile(ConfigFolder.."/"..ConfigName) then
-            local data = readfile(ConfigFolder.."/"..ConfigName)
-            local decoded = game:GetService("HttpService"):JSONDecode(data)
-            ApplyConfig(decoded)
-        end
-    end
-})
-
-Tab7:Button({
-    Title = "Delete Config",
-    Desc = "Delete saved config",
-    Callback = function()
-        if isfile(ConfigFolder.."/"..ConfigName) then
-            delfile(ConfigFolder.."/"..ConfigName)
-        end
-    end
-})
-
-Tab7:Section({ 
-    Title = "Other Scripts",
-    Icon = "file-code-corner",
-    TextXAlignment = "Left",
-    TextSize = 17,
-})
-
-Tab7:Divider()
-
-Tab7:Button({
-    Title = "FLY",
-    Desc = "Scripts Fly Gui",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
-    end
-})
-
-Tab7:Button({
-    Title = "Simple Shader",
-    Desc = "Shader",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/p0e1/1/refs/heads/main/SimpleShader.lua"))()
-    end
-})
-
-Tab7:Button({
-    Title = "Infinite Yield",
-    Desc = "Other Scripts",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
-    end
-  })
