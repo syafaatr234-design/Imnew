@@ -1,0 +1,93 @@
+-- UI Library Core
+local WindUI = {}
+
+function WindUI:CreateWindow(config)
+    local HubName = config.Name or "Hub Name"
+    local Author = config.Author or "Author"
+    
+    -- Membuat Main Frame dengan background gradasi Biru & Putih
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 500, 0, 350)
+    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    
+    -- Efek Modern: Rounded Corners
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 12)
+    UICorner.Parent = MainFrame
+    
+    -- Efek Gradasi (Biru ke Putih)
+    local UIGradient = Instance.new("UIGradient")
+    UIGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 144, 255)), -- Biru Modern
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))  -- Putih
+    })
+    UIGradient.Rotation = 45
+    UIGradient.Parent = MainFrame
+
+    -- Fitur Minimize ke OpenWindow
+    local MinimizeBtn = Instance.new("TextButton")
+    MinimizeBtn.Text = "-"
+    MinimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+    MinimizeBtn.Position = UDim2.new(1, -40, 0, 10)
+    MinimizeBtn.Parent = MainFrame
+    
+    MinimizeBtn.MouseButton1Click:Connect(function()
+        MainFrame.Visible = false
+        WindUI:EditOpenWindow({
+            Size = UDim2.new(0, 60, 0, 60),
+            Shape = "Square", -- Sesuai request: square
+            Name = "Open",
+            OnClick = function() MainFrame.Visible = true end
+        })
+    end)
+
+    return MainFrame
+end
+
+-- Fungsi EditOpenWindow untuk memunculkan tombol kecil saat di-minimize
+function WindUI:EditOpenWindow(options)
+    local OpenBtn = Instance.new("TextButton")
+    OpenBtn.Size = options.Size or UDim2.new(0, 50, 0, 50)
+    OpenBtn.Text = options.Name
+    OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+    OpenBtn.Position = UDim2.new(0.1, 0, 0.8, 0)
+    
+    if options.Shape == "Square" then
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = OpenBtn
+    end
+    
+    OpenBtn.MouseButton1Click:Connect(function()
+        options.OnClick()
+        OpenBtn:Destroy()
+    end)
+    OpenBtn.Parent = game.CoreGui -- atau PlayerGui
+end
+
+-- Fungsi Komponen (Tab)
+local Tab = {}
+Tab.__index = Tab
+
+function Tab:Divider()
+    local div = Instance.new("Frame")
+    div.Size = UDim2.new(1, -20, 0, 2)
+    div.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+    -- Visual: - - -
+    local stroke = Instance.new("UIStroke")
+    stroke.DashPattern = {5, 5}
+    return div
+end
+
+function Tab:Space()
+    local space = Instance.new("Frame")
+    space.Size = UDim2.new(1, 0, 0, 15)
+    space.BackgroundTransparency = 1
+    return space
+end
+
+function Tab:Slider(text, min, max, callback)
+    -- Perhatian: Slider ini visual saja (Gak Work sesuai request)
+    print("Slider Created: " .. text .. " (Disabled as requested)")
+end
